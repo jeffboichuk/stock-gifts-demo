@@ -1,0 +1,56 @@
+name: Refresh prices
+
+on:
+  # Weekdays at 22:00 UTC, which is 5pm ET (EST) / 6pm ET (EDT), ~1-2 hours
+  # after the North American market close. GitHub may delay cron runs by
+  # several minutes during peak load; that's fine for our purposes.
+  schedule:
+    - cron: "0 22 * * 1-5"
+  # Manual trigger ("Run workflow" button in the Actions tab).
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Opt into Node.js 24 for JavaScript actions ahead of GitHub's June 2, 2026
+# forced cutover. Lets us verify checkout/setup-python work on Node 24 now
+# instead of finding out the hard way on the cutover date. Safe to remove
+# after June 2 once Node 24 becomes the default.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: refresh-prices
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install --upgrade pip yfinance
+
+      - name: Fetch latest prices
+        run: python scripts/refresh_prices.py
+
+      - name: Commit price files if they changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # prices.json = latest quote (live point); history.json = daily series the chart draws.
+          git add prices.json history.json
+          # Use --cached so this also detects a file being added for the first time.
+          if git diff --cached --quiet -- prices.json history.json; then
+            echo "No price changes; nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: refresh prices ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+          git push

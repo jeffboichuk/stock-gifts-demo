@@ -1,0 +1,4172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FHSA Fun(ds) · Portfolio Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E📈%3C/text%3E%3C/svg%3E">
+<!-- PWA: relative paths so everything works under the GitHub Pages subpath (/stock-gifts/) -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#000000" />
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="FHSA Fun(ds)" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+  :root {
+    /* SpaceX-inspired dark theme. Pure black surface, white ink, thin lines. */
+    --bg: #000000;
+    --card: #0a0a0a;
+    --card-2: #111111;
+    --ink: #ffffff;
+    --ink-soft: #b8b8b8;
+    --muted: #6b6b6b;
+    --line: #1f1f1f;
+    --line-strong: #2a2a2a;
+    --teal: #5eead4;
+    --teal-soft: rgba(94, 234, 212, 0.12);
+    --gold: #f5b840;
+    --gold-soft: rgba(245, 184, 64, 0.12);
+    --green: #4ade80;
+    --green-soft: rgba(74, 222, 128, 0.12);
+    --red: #f87171;
+    --red-soft: rgba(248, 113, 113, 0.14);
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --pink: #f472b6;
+    --shadow: 0 0 0 1px rgba(255,255,255,0.04);
+    --radius: 4px;
+    /* SpaceX typography accents */
+    --eyebrow-spacing: 0.22em;
+    --display-stack: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  header.top {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: rgba(250, 247, 242, 0.92);
+    backdrop-filter: saturate(180%) blur(10px);
+    -webkit-backdrop-filter: saturate(180%) blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .top-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--ink);
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .brand-mark {
+    width: 32px; height: 32px;
+    background: var(--teal);
+    border-radius: 8px;
+    display: grid; place-items: center;
+    color: white;
+    font-size: 18px;
+  }
+  .brand-sub { font-weight: 500; color: var(--muted); font-size: 13px; }
+  .spacer { flex: 1; }
+  .price-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    border: 1px solid var(--line);
+    padding: 6px 10px 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .price-pill .dot {
+    width: 8px; height: 8px; border-radius: 999px;
+    background: var(--muted);
+  }
+  .price-pill.live .dot { background: var(--green); box-shadow: 0 0 0 4px rgba(22,163,74,.15); }
+  .price-pill.error .dot { background: var(--red); }
+  .price-pill button {
+    border: none; background: transparent;
+    cursor: pointer; padding: 2px 6px; border-radius: 8px;
+    color: var(--teal); font-weight: 600; font-size: 12px;
+  }
+  .price-pill button:hover { background: var(--teal-soft); }
+
+  main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 80px; }
+
+  .hero { margin: 4px 0 24px; }
+  .hero h1 { margin: 0; font-size: 34px; letter-spacing: -0.02em; font-weight: 800; }
+  .hero p { color: var(--ink-soft); margin: 6px 0 0; font-size: 16px; }
+
+  .section-h { margin: 28px 0 14px; display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+  .section-h h2 { font-size: 20px; margin: 0; font-weight: 700; }
+  .section-h .small { color: var(--muted); font-size: 13px; }
+
+  .controls {
+    display: inline-flex; gap: 8px; align-items: center;
+    background: white; border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px;
+  }
+  .controls button {
+    border: none; background: transparent;
+    padding: 6px 12px; border-radius: 999px;
+    cursor: pointer; font-size: 13px; color: var(--ink-soft);
+    font-weight: 600;
+  }
+  .controls button.active { background: var(--ink); color: white; }
+
+  .pill-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: white;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 8px 34px 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1.2;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' stroke='%234B5563' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+  }
+  .pill-select:focus { outline: none; border-color: var(--ink); }
+  .pill-select:hover { border-color: var(--ink-soft); }
+  .pill-select[data-value="cousins"] { background-color: #E11D48; color: white; border-color: #E11D48; }
+  .pill-select[data-value="friends"] { background-color: #0EA5E9; color: white; border-color: #0EA5E9; }
+  .pill-select[data-value="cousins"],
+  .pill-select[data-value="friends"] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' stroke='white' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  /* Colored options keep readable text inside the native picker */
+  .pill-select option { background: white; color: var(--ink); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .kid-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    border: 1px solid transparent;
+    position: relative;
+    overflow: hidden;
+  }
+  .kid-card::before {
+    content: "";
+    position: absolute; inset: 0 0 auto 0;
+    height: 4px;
+    background: var(--kid-color, var(--teal));
+  }
+  .kid-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,.06), 0 16px 32px rgba(20,33,61,.08); }
+  .kid-card .row1 { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding-left: 34px; padding-right: 88px; min-height: 44px; }
+  .kid-card .rank {
+    position: absolute;
+    top: 12px; left: 12px;
+    min-width: 28px; height: 28px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: var(--kid-color, var(--ink));
+    color: white;
+    font-size: 12px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center;
+    line-height: 1;
+    z-index: 1;
+    box-shadow: 0 1px 2px rgba(20,33,61,.12);
+  }
+  .kid-card .emoji {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: var(--kid-color-soft, var(--teal-soft));
+    display: grid; place-items: center;
+    font-size: 22px;
+  }
+  .kid-card .name { font-weight: 700; font-size: 17px; }
+  .kid-card .age { color: var(--muted); font-size: 12px; }
+  .kid-card .value { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0; }
+  .kid-card .meta { display: flex; gap: 14px; color: var(--ink-soft); font-size: 12px; flex-wrap: wrap; }
+  .kid-card .meta b { color: var(--ink); font-weight: 600; }
+  .kid-card .growth-row { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-soft); flex-wrap: wrap; }
+  .kid-card .growth-row .grow-label { color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; }
+  .kid-card .growth-row .grow-val { font-weight: 800; font-size: 14px; letter-spacing: -0.01em; }
+  .kid-card .growth-row .grow-val.up { color: var(--green); }
+  .kid-card .growth-row .grow-val.down { color: var(--red); }
+  .kid-card .growth-row .grow-val.flat { color: var(--ink-soft); }
+  .kid-card .growth-row .grow-sub { color: var(--muted); font-size: 11px; }
+  .delta { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .delta.up { background: var(--green-soft); color: var(--green); }
+  .delta.down { background: var(--red-soft); color: var(--red); }
+  .delta.flat { background: #F3F4F6; color: var(--ink-soft); }
+
+  .filter-row {
+    display: flex; align-items: center; gap: 10px;
+    margin: 0 0 16px;
+    flex-wrap: wrap;
+  }
+  .filter-row .filter-label {
+    color: var(--muted); font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .filter-row .controls button[data-filter="cousins"].active { background: #E11D48; }
+  .filter-row .controls button[data-filter="friends"].active { background: #0EA5E9; }
+
+  .group-section { margin: 0 0 22px; }
+  .group-h {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    margin: 20px 0 12px;
+    padding: 8px 14px;
+    border-left: 4px solid var(--group-accent, var(--teal));
+    background: var(--group-soft, transparent);
+    border-radius: 6px;
+  }
+  .group-h h3 {
+    margin: 0; font-size: 13px; font-weight: 700;
+    color: var(--group-accent, var(--ink));
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .group-h .group-sub {
+    color: var(--ink-soft); font-size: 13px; font-weight: 500;
+  }
+  .group-h .group-count {
+    margin-left: auto;
+    color: var(--ink-soft); font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .kid-card .badge {
+    position: absolute;
+    top: 12px; right: 12px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: var(--badge-soft, #F3F4F6);
+    color: var(--badge-ink, var(--ink-soft));
+    z-index: 1;
+  }
+
+  .panel {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 22px;
+  }
+  .panel + .panel { margin-top: 16px; }
+  .panel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch; }
+  .panel-row > .panel + .panel { margin-top: 0; }
+  @media (max-width: 760px) { .panel-row { grid-template-columns: 1fr; } }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  @media (max-width: 600px)  { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    position: relative;
+  }
+  .stat .label { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat .value { font-size: 26px; font-weight: 800; margin-top: 6px; letter-spacing: -0.02em; }
+  .stat .sub { color: var(--ink-soft); font-size: 12px; margin-top: 4px; }
+  .stat.highlight {
+    background: linear-gradient(135deg, var(--gold-soft) 0%, var(--teal-soft) 100%);
+    border: 1px solid var(--gold);
+  }
+  .stat .new-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--gold);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .ticker-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--gold-soft);
+    color: #92400E;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+  }
+
+  .chart-wrap { position: relative; height: 320px; }
+  .chart-wrap.tall { height: 380px; }
+  @media (max-width: 640px) { .chart-wrap, .chart-wrap.tall { height: 260px; } }
+
+  /* Time-range toggles (1W / 1M / 6M / 1Y / All), Google-style */
+  .chart-range { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .chart-range button {
+    appearance: none; cursor: pointer;
+    background: transparent; color: var(--ink-soft);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 14px; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.02em; line-height: 1;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .chart-range button:hover { border-color: var(--ink-soft); color: var(--ink); }
+  .chart-range button.active {
+    background: var(--ink); color: var(--bg); border-color: var(--ink);
+  }
+  @media (max-width: 640px) {
+    .chart-range { gap: 5px; }
+    .chart-range button { padding: 6px 12px; font-size: 12px; }
+  }
+
+  /* Combined chart: floating per-line labels instead of one big tooltip block */
+  .combined-tip { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    transition: opacity 0.12s ease; z-index: 5; font-size: 11.5px; line-height: 1; }
+  .combined-tip .tip-date { position: absolute; transform: translateX(-50%);
+    color: var(--ink-soft, #b8b8b8); font-weight: 600; font-size: 11px;
+    background: rgba(10,10,10,0.7); padding: 2px 7px; border-radius: 5px; white-space: nowrap; }
+  .combined-tip .tip-row { position: absolute; display: flex; align-items: center; gap: 5px;
+    color: #fff; font-weight: 600; white-space: nowrap;
+    background: rgba(10,10,10,0.62); padding: 2px 6px; border-radius: 5px; }
+  .combined-tip .tip-row.left { flex-direction: row-reverse; }
+  .combined-tip .tip-dot { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
+  @media (max-width: 640px) { .combined-tip { font-size: 10.5px; } }
+
+  /* Gift markers on the per-kid value-over-time chart: vertical line per gift
+     plus a hover card naming the gift and what was bought. */
+  .gift-tip { position: absolute; pointer-events: none; opacity: 0;
+    transition: opacity 0.12s ease; z-index: 6; transform: translateX(-50%);
+    background: rgba(10,10,10,0.92); border: 1px solid #f5b840;
+    border-radius: 8px; padding: 8px 10px; width: max-content; max-width: 210px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.45); }
+  .gift-tip .gt-title { color: #f5b840; font-weight: 700; font-size: 12px; margin-bottom: 3px; }
+  .gift-tip .gt-line { color: #e8e8e8; font-size: 11.5px; line-height: 1.35; }
+  .gift-tip .gt-cost { color: #9a9a9a; font-size: 11px; margin-top: 3px; }
+  @media (max-width: 640px) {
+    .gift-tip { max-width: 170px; padding: 7px 9px; }
+    .gift-tip .gt-title { font-size: 11px; }
+    .gift-tip .gt-line { font-size: 10.5px; }
+    .gift-tip .gt-cost { font-size: 10px; }
+  }
+
+  .lesson {
+    background: linear-gradient(135deg, #FEF3C7 0%, #FFE4E6 100%);
+    border-radius: var(--radius);
+    padding: 22px;
+    border: 1px solid #FCD34D;
+  }
+  .lesson h3 { margin: 0 0 8px; font-size: 18px; }
+  .lesson .tag {
+    display: inline-block;
+    background: white;
+    color: var(--ink);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 10px;
+  }
+  .lesson .body { color: var(--ink); font-size: 15px; }
+  .lesson .body p { margin: 0 0 10px; }
+  .lesson .body p:last-child { margin: 0; }
+
+  .concept-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 1100px) { .concept-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px)  { .concept-grid { grid-template-columns: 1fr; } }
+  .concept {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    border-top: 4px solid var(--c, var(--teal));
+  }
+  .concept h3 { margin: 0 0 6px; font-size: 17px; }
+  .concept p { color: var(--ink-soft); margin: 0; font-size: 14px; }
+
+  .timeline { position: relative; padding-left: 22px; }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 6px; top: 6px; bottom: 6px;
+    width: 2px;
+    background: var(--line);
+  }
+  .tx { position: relative; padding: 10px 0; }
+  .tx::before {
+    content: "";
+    position: absolute;
+    left: -18px; top: 18px;
+    width: 10px; height: 10px;
+    border-radius: 999px;
+    background: var(--dot-color, var(--teal));
+    box-shadow: 0 0 0 3px var(--bg);
+  }
+  .tx-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 14px;
+  }
+  .tx-event { font-weight: 600; font-size: 14px; }
+  .tx-date { color: var(--muted); font-size: 12px; }
+  .tx-detail { color: var(--ink-soft); font-size: 13px; margin-top: 2px; }
+  .tx-amount { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 14px; }
+
+  .breadcrumbs {
+    display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .breadcrumbs a { color: var(--teal); text-decoration: none; font-weight: 600; }
+  .breadcrumbs a:hover { text-decoration: underline; }
+
+  .kid-hero {
+    background: linear-gradient(135deg, var(--kid-color, var(--teal)) 0%, var(--kid-color-2, #134E4A) 100%);
+    color: white;
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kid-hero::before {
+    content: "";
+    position: absolute;
+    right: -60px; top: -60px;
+    width: 220px; height: 220px;
+    background: rgba(255,255,255,.08);
+    border-radius: 999px;
+  }
+  .kid-hero::after {
+    content: "";
+    position: absolute;
+    right: -100px; bottom: -100px;
+    width: 280px; height: 280px;
+    background: rgba(255,255,255,.06);
+    border-radius: 999px;
+  }
+  .kid-hero .who { display: flex; align-items: center; gap: 14px; }
+  .kid-hero .big-emoji {
+    width: 64px; height: 64px;
+    background: rgba(255,255,255,.15);
+    border-radius: 18px;
+    display: grid; place-items: center;
+    font-size: 32px;
+  }
+  .kid-hero h1 { margin: 0; font-size: 36px; letter-spacing: -0.02em; }
+  .kid-hero .sub { opacity: .85; font-size: 14px; }
+  .kid-hero .counter {
+    margin-top: 18px;
+    background: rgba(255,255,255,.16);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+  }
+  .kid-hero .counter b { font-size: 16px; font-weight: 700; }
+  .kid-hero .counter + .counter { margin-left: 10px; }
+
+  .holdings { display: flex; flex-direction: column; gap: 10px; }
+  .holding {
+    display: grid;
+    grid-template-columns: 64px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .holding .tk { font-weight: 700; }
+  .holding .nm { color: var(--ink-soft); font-size: 13px; }
+  .holding .v { text-align: right; }
+  .holding .v .big { font-weight: 700; }
+  .holding .v .small { color: var(--muted); font-size: 12px; }
+
+  .help {
+    background: #F0F9FF;
+    border: 1px solid #BAE6FD;
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: #075985;
+    font-size: 13px;
+  }
+  .warn {
+    background: #FFFBEB;
+    border: 1px solid #FCD34D;
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: #92400E;
+    font-size: 13px;
+  }
+
+  .proj-disclaimer { color: var(--muted); font-size: 12px; line-height: 1.55; margin: 10px 0 0; }
+
+  /* House fund progress bars */
+  .hf-caption { font-size: 14px; color: var(--ink-soft); line-height: 1.6; margin: 0 0 16px; }
+  .hf-caption b { color: var(--ink); }
+  .hf-bar-label {
+    display: flex; justify-content: space-between; gap: 10px;
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .hf-bar-label .hf-pct { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .hf-bar {
+    height: 14px; border-radius: 999px; overflow: hidden;
+    background: var(--card-2); border: 1px solid var(--line);
+    margin-bottom: 16px;
+  }
+  .hf-fill { height: 100%; border-radius: 999px; min-width: 3px; background: linear-gradient(90deg, var(--teal), var(--green)); }
+  .hf-fill.proj { background: linear-gradient(90deg, var(--gold), var(--teal)); }
+  @media (max-width: 640px) {
+    .hf-caption { font-size: 13px; }
+    .hf-bar { height: 12px; margin-bottom: 14px; }
+  }
+
+  /* Coming up: next gift occasions */
+  .up-row { display: flex; align-items: center; gap: 12px; padding: 11px 2px; border-bottom: 1px solid var(--line); }
+  .up-row:last-child { border-bottom: none; padding-bottom: 2px; }
+  .up-row:first-child { padding-top: 2px; }
+  .up-emoji {
+    width: 36px; height: 36px; flex: 0 0 auto;
+    border-radius: 6px; background: var(--card-2); border: 1px solid var(--line);
+    display: grid; place-items: center; font-size: 18px;
+  }
+  .up-name { font-weight: 600; font-size: 14px; color: var(--ink); }
+  .up-occ { color: var(--ink-soft); font-size: 12px; margin-top: 1px; }
+  .up-when { margin-left: auto; text-align: right; flex: 0 0 auto; }
+  .up-date { font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .up-days { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+  .up-row.soon .up-days { color: var(--gold); font-weight: 700; }
+  .up-row.soon .up-emoji { border-color: var(--gold); }
+  /* Stacked avatars for a shared occasion (e.g. Christmas), one row for all kids */
+  .up-emoji-stack { display: flex; flex: 0 0 auto; align-items: center; }
+  .up-stack-emoji {
+    width: 30px; height: 30px; flex: 0 0 auto;
+    border-radius: 6px; background: var(--card-2); border: 1px solid var(--line);
+    display: grid; place-items: center; font-size: 15px;
+    margin-left: -10px;
+  }
+  .up-stack-emoji:first-child { margin-left: 0; }
+  .up-row.soon .up-stack-emoji { border-color: var(--gold); }
+  @media (max-width: 640px) {
+    .up-row { gap: 10px; }
+    .up-emoji { width: 32px; height: 32px; font-size: 16px; }
+    .up-stack-emoji { width: 27px; height: 27px; font-size: 13px; margin-left: -9px; }
+    .up-name { font-size: 13px; }
+    .up-date { font-size: 12px; }
+  }
+
+  /* Badges shelf */
+  .badge-shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .badge-tile {
+    position: relative;
+    background: var(--card-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 12px 12px;
+    text-align: center;
+  }
+  .badge-tile .b-icon { font-size: 26px; line-height: 1; }
+  .badge-tile .b-name { font-size: 12.5px; font-weight: 600; color: var(--ink); margin-top: 8px; line-height: 1.3; }
+  .badge-tile .b-date, .badge-tile .b-hint { font-size: 10.5px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+  .badge-tile.earned { border-color: var(--badge-c, var(--gold)); }
+  .badge-tile.earned .b-date { color: var(--badge-c, var(--gold)); letter-spacing: 0.04em; }
+  .badge-tile.locked .b-icon { filter: grayscale(1); opacity: 0.4; }
+  .badge-tile.locked .b-name { color: var(--muted); }
+  .badge-tile .b-new {
+    position: absolute; top: 8px; right: 8px;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--gold); border: 1px solid var(--gold);
+    padding: 2px 6px; border-radius: 999px;
+  }
+  /* Bonus badge: the one you earn on purpose, so it never looks greyed out. */
+  .badge-tile.bonus {
+    border-color: var(--gold);
+    background: linear-gradient(160deg, var(--gold-soft) 0%, var(--card-2) 70%);
+  }
+  .badge-tile.bonus.locked .b-icon { filter: none; opacity: 1; }
+  .badge-tile.bonus.locked .b-name { color: var(--ink); }
+  .badge-tile .b-bonus {
+    margin-top: 7px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em;
+    color: var(--gold);
+  }
+  /* Hover or tap a tile with a data-tip to read the full rule. */
+  .badge-tile[data-tip] { cursor: help; }
+  .badge-tile[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    width: 210px; white-space: normal; text-align: left;
+    background: var(--ink); color: var(--card, #fff);
+    font-size: 11.5px; font-weight: 500; line-height: 1.45;
+    padding: 8px 10px; border-radius: 8px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.28);
+    opacity: 0; pointer-events: none; transition: opacity .12s ease;
+    z-index: 20;
+  }
+  .badge-tile[data-tip]::before {
+    content: ""; position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: var(--ink);
+    opacity: 0; pointer-events: none; transition: opacity .12s ease; z-index: 20;
+  }
+  .badge-tile[data-tip]:hover::after, .badge-tile[data-tip]:focus::after,
+  .badge-tile[data-tip]:hover::before, .badge-tile[data-tip]:focus::before { opacity: 1; }
+  .badge-tile[data-tip]:focus { outline: none; }
+  @media (max-width: 640px) {
+    .badge-shelf { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .badge-tile { padding: 12px 10px 10px; }
+    .badge-tile .b-icon { font-size: 22px; }
+    .badge-tile .b-name { font-size: 11.5px; }
+    .name-badges { gap: 6px; }
+    .name-badges .nb-label { font-size: 9.5px; }
+    .name-badge { width: 30px; height: 30px; font-size: 17px; }
+  }
+
+  /* Earned badges shown next to the kid's name in the hero */
+  .name-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 2px; }
+  .name-badges:empty { display: none; }
+  .name-badges .nb-label {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .name-badges .nb-count {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    text-decoration: none; border-bottom: 1px dotted var(--muted);
+    cursor: pointer; white-space: nowrap;
+  }
+  .name-badges .nb-count:hover { color: var(--ink); border-bottom-color: var(--ink); }
+  .name-badge {
+    position: relative;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; font-size: 19px; line-height: 1;
+    border-radius: 999px;
+    background: var(--card-2);
+    border: 1px solid var(--badge-c, var(--gold));
+    cursor: pointer;
+  }
+  .name-badge:focus { outline: none; }
+  .name-badge::after {
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    white-space: nowrap;
+    background: var(--ink); color: var(--card, #fff);
+    font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em;
+    padding: 6px 9px; border-radius: 8px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.28);
+    opacity: 0; pointer-events: none; transition: opacity .12s ease;
+    z-index: 20;
+  }
+  .name-badge::before {
+    content: ""; position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: var(--ink);
+    opacity: 0; pointer-events: none; transition: opacity .12s ease; z-index: 20;
+  }
+  .name-badge:hover::after, .name-badge:focus::after,
+  .name-badge:hover::before, .name-badge:focus::before { opacity: 1; }
+
+  .footnote { color: var(--muted); font-size: 12px; text-align: center; margin-top: 30px; }
+  .footnote a { color: var(--teal); }
+
+  .email-preview {
+    background: #F9FAFB;
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: 14px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    color: var(--ink);
+  }
+
+  /* Hidden by default; JS shows based on route */
+  #home, #kid-view, #why-view { display: none; }
+  body.route-home #home { display: block; }
+  body.route-kid #kid-view { display: block; }
+  body.route-why #why-view { display: block; }
+
+  /* ===================== WHY PAGE ===================== */
+  .why-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: white;
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .why-nav-link:hover { color: var(--teal); border-color: var(--teal); }
+
+  .why-hero {
+    background: linear-gradient(135deg, #14213D 0%, #0F766E 100%);
+    color: white;
+    border-radius: var(--radius);
+    padding: 40px 32px 36px;
+    margin-bottom: 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .why-hero::before {
+    content: "";
+    position: absolute;
+    right: -80px; top: -80px;
+    width: 260px; height: 260px;
+    background: rgba(255,255,255,.06);
+    border-radius: 999px;
+  }
+  .why-hero::after {
+    content: "";
+    position: absolute;
+    right: -140px; bottom: -140px;
+    width: 320px; height: 320px;
+    background: rgba(255,255,255,.04);
+    border-radius: 999px;
+  }
+  .why-hero .eyebrow {
+    display: inline-block;
+    background: rgba(255,255,255,.15);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 11px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+  }
+  .why-hero h1 {
+    margin: 0 0 12px;
+    font-size: 42px;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    position: relative;
+    z-index: 1;
+  }
+  .why-hero .lede {
+    margin: 0;
+    font-size: 17px;
+    opacity: .92;
+    max-width: 640px;
+    position: relative;
+    z-index: 1;
+  }
+  @media (max-width: 640px) {
+    .why-hero { padding: 28px 22px; }
+    .why-hero h1 { font-size: 30px; }
+    .why-hero .lede { font-size: 15px; }
+  }
+
+  .why-panel {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 26px 28px;
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .why-panel::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--wp-accent, var(--teal));
+  }
+  .why-panel .tag-pill,
+  .why-closing .tag-pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--wp-bg, var(--teal-soft));
+    color: var(--wp-accent, var(--teal));
+    margin-bottom: 10px;
+  }
+  .why-panel h2 {
+    margin: 0 0 12px;
+    font-size: 24px;
+    letter-spacing: -0.01em;
+  }
+  .why-panel p {
+    margin: 0 0 12px;
+    color: var(--ink-soft);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+  .why-panel p:last-child { margin-bottom: 0; }
+  .why-panel strong { color: var(--ink); }
+
+  .why-section-h {
+    margin: 28px 0 14px;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+  }
+
+  .fhsa-callout {
+    margin-top: 14px;
+    background: linear-gradient(135deg, #FEF3C7 0%, #FFE4E6 100%);
+    border: 1px solid #FCD34D;
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .fhsa-callout h3 {
+    margin: 0 0 8px;
+    font-size: 16px;
+  }
+  .fhsa-callout p {
+    margin: 0 0 8px;
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .fhsa-callout ul {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .fhsa-callout ul li { margin-bottom: 6px; }
+  .fhsa-callout strong { color: var(--ink); }
+
+  .compound-mini {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 14px;
+    background: #F0F9FF;
+    border: 1px solid #BAE6FD;
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .compound-mini .cell { text-align: center; }
+  .compound-mini .yrs {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #075985;
+    margin-bottom: 4px;
+  }
+  .compound-mini .amt {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .compound-mini .lbl {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  @media (max-width: 520px) {
+    .compound-mini { grid-template-columns: 1fr; }
+  }
+
+  .quote-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 720px) { .quote-grid { grid-template-columns: 1fr; } }
+  .quote-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+    position: relative;
+    border-top: 4px solid var(--q-accent, var(--teal));
+    overflow: hidden;
+  }
+  .quote-card .mark {
+    position: absolute;
+    top: 4px; right: 16px;
+    font-size: 70px;
+    color: var(--q-accent, var(--teal));
+    opacity: .12;
+    line-height: 1;
+    font-family: Georgia, serif;
+    pointer-events: none;
+  }
+  .quote-card blockquote {
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-style: italic;
+    color: var(--ink);
+    line-height: 1.5;
+    position: relative;
+    z-index: 1;
+  }
+  .quote-card .who {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-soft);
+  }
+  .quote-card .who .role {
+    display: block;
+    font-weight: 400;
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  .why-closing {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .why-closing + .why-closing { margin-top: 16px; }
+  .why-closing::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--wp-accent, var(--gold));
+  }
+  .why-closing h2 {
+    margin: 0 0 14px;
+    font-size: 24px;
+    letter-spacing: -0.01em;
+  }
+  .why-closing p {
+    margin: 0 0 12px;
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--ink-soft);
+  }
+  .why-closing strong { color: var(--ink); }
+
+  .ownership-chart {
+    background: #FFF9EB;
+    border: 1px solid #FDE68A;
+    border-radius: 12px;
+    padding: 22px 22px 20px;
+    margin: 18px 0 22px;
+  }
+  .ownership-chart-title {
+    text-align: center;
+    font-size: 14px;
+    color: var(--ink);
+    margin: 0 0 14px;
+    font-weight: 500;
+    line-height: 1.45;
+  }
+  .ownership-legend {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 10px;
+    margin: 0;
+    font-size: 12px;
+    color: var(--ink-soft);
+    align-self: center;
+  }
+  .ownership-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .ownership-swatch {
+    width: 11px;
+    height: 11px;
+    border-radius: 2px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .ownership-swatch-gold { background: var(--gold); }
+  .ownership-swatch-neutral { background: #E5DFCC; }
+  .ownership-chart-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 24px;
+    align-items: start;
+    justify-items: center;
+  }
+  .ownership-panel { text-align: center; }
+  .ownership-year {
+    font-size: 13px;
+    color: var(--ink);
+    margin: 0 0 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .ownership-waffle {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 2px;
+    width: 160px;
+    max-width: 100%;
+    margin: 0 auto 12px;
+  }
+  .waffle-cell {
+    aspect-ratio: 1;
+    border-radius: 1px;
+    background: #E5DFCC;
+  }
+  .waffle-cell.on-gold { background: var(--gold); }
+  .ownership-stat {
+    margin: 0;
+    font-size: 12px;
+    color: var(--ink-soft);
+    line-height: 1.4;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+  }
+  .ownership-stat-pair {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+  }
+  .ownership-stat strong {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .ownership-num-gold { color: var(--gold); }
+  .ownership-source a { color: inherit; text-decoration: underline; }
+  .ownership-source {
+    text-align: center;
+    font-size: 10.5px;
+    color: var(--muted);
+    margin: 18px 0 0;
+    line-height: 1.5;
+  }
+  @media (max-width: 520px) {
+    .ownership-chart { padding: 18px 14px 16px; }
+    .ownership-chart-grid {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    .ownership-waffle { width: 180px; }
+    .ownership-legend {
+      gap: 8px;
+      font-size: 11.5px;
+      align-items: center;
+    }
+  }
+
+  .home-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: white;
+    border: 1px solid var(--line);
+    color: var(--teal);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform .15s ease;
+  }
+  .home-cta:hover { transform: translateY(-1px); border-color: var(--teal); }
+
+  /* ===================== MOBILE ===================== */
+  @media (max-width: 640px) {
+    main { padding: 18px 14px 60px; }
+
+    .top-inner { padding: 10px 14px; gap: 10px; }
+    .brand { font-size: 16px; gap: 8px; }
+    .brand-mark { width: 28px; height: 28px; font-size: 16px; border-radius: 7px; }
+    .brand-sub { font-size: 11px; }
+    .why-nav-link { font-size: 11px; padding: 5px 10px; }
+
+    .hero h1 { font-size: 26px; }
+    .hero p { font-size: 14px; }
+
+    .section-h { flex-wrap: wrap; gap: 8px; margin: 22px 0 12px; }
+    .section-h h2 { font-size: 18px; }
+    .controls { flex-wrap: wrap; }
+    .controls button { padding: 6px 10px; font-size: 12px; }
+    .pill-select { padding: 7px 28px 7px 12px; font-size: 12px; background-position: right 10px center; }
+
+    .filter-row { gap: 8px; margin-bottom: 12px; }
+
+    .kid-hero { padding: 20px 18px; margin-bottom: 16px; }
+    .kid-hero::before { width: 160px; height: 160px; right: -50px; top: -50px; }
+    .kid-hero::after  { width: 200px; height: 200px; right: -80px; bottom: -80px; }
+    .kid-hero .who { gap: 12px; }
+    .kid-hero .big-emoji { width: 48px; height: 48px; font-size: 24px; border-radius: 14px; }
+    .kid-hero h1 { font-size: 26px; line-height: 1.15; }
+    .kid-hero .sub { font-size: 13px; }
+    .kid-hero .counter {
+      display: block;
+      width: 100%;
+      margin-top: 14px;
+      padding: 10px 14px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .kid-hero .counter b { font-size: 15px; }
+    .kid-hero .counter + .counter { margin-left: 0; margin-top: 8px; }
+
+    .stat { padding: 14px; }
+    .stat .value { font-size: 22px; }
+    .stat .label { font-size: 11px; }
+    .stat .sub { font-size: 11px; }
+
+    .panel { padding: 16px; }
+    .panel + .panel { margin-top: 12px; }
+
+    .kid-card { padding: 16px; }
+    .kid-card .value { font-size: 24px; }
+
+    .holding { grid-template-columns: 48px 1fr auto; padding: 10px; gap: 10px; }
+
+    .tx-row { grid-template-columns: 1fr auto; gap: 8px; }
+    .tx-event { font-size: 13px; }
+    .tx-detail { font-size: 12px; }
+    .tx-amount { font-size: 13px; }
+
+    .lesson { padding: 18px; }
+    .lesson h3 { font-size: 16px; }
+    .lesson .body { font-size: 14px; }
+
+    .group-h { padding: 6px 12px; margin: 16px 0 10px; }
+  }
+
+  @media print {
+    header.top { position: static; }
+    .price-pill button, .controls, .pill-select, .brand-sub { display: none !important; }
+    .panel, .stat, .kid-hero { box-shadow: none !important; border: 1px solid var(--line); }
+  }
+
+  /* =========================================================
+     SPACEX DARK SKIN
+     Pure black, thin borders, uppercase labels, condensed
+     typography, monochrome surfaces with selective accent.
+     Appended last so it wins on equal specificity.
+     ========================================================= */
+
+  body {
+    font-family: var(--display-stack);
+    background: #000;
+    background-image:
+      radial-gradient(ellipse 800px 400px at 50% -100px, rgba(255,255,255,0.04), transparent 60%);
+    background-attachment: fixed;
+  }
+
+  /* --- Header --- */
+  header.top {
+    background: rgba(0, 0, 0, 0.78);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { color: var(--ink); font-weight: 600; letter-spacing: 0.04em; }
+  .brand-mark {
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+    color: var(--ink);
+  }
+  .brand-sub {
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: var(--eyebrow-spacing);
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  /* --- Hero typography (home + kid view) --- */
+  .hero h1 {
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    font-size: 30px;
+  }
+  .hero p { color: var(--ink-soft); }
+
+  .section-h h2 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: var(--eyebrow-spacing);
+    color: var(--ink);
+  }
+  .section-h .small {
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 11px;
+  }
+
+  /* --- Surfaces: panels, stats, cards --- */
+  .panel, .stat, .kid-card, .concept, .quote-card, .why-panel, .why-closing {
+    background: var(--card);
+    border: 1px solid var(--line);
+    box-shadow: none;
+    border-radius: var(--radius);
+  }
+  .kid-card { transition: border-color .15s ease, transform .15s ease; }
+  .kid-card:hover {
+    transform: translateY(-1px);
+    box-shadow: none;
+    border-color: var(--line-strong);
+  }
+  .kid-card::before { height: 2px; }
+  .kid-card .emoji {
+    background: var(--card-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  .kid-card .name { font-weight: 600; letter-spacing: 0.01em; }
+  .kid-card .age { color: var(--muted); text-transform: uppercase; letter-spacing: 0.14em; font-size: 10px; }
+  .kid-card .value {
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .kid-card .meta { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .kid-card .meta b { color: var(--ink); font-weight: 500; }
+  .kid-card .growth-row { border-top: 1px solid var(--line); }
+  .kid-card .growth-row .grow-label { color: var(--muted); letter-spacing: var(--eyebrow-spacing); }
+  .kid-card .rank {
+    box-shadow: none;
+    border: 1px solid rgba(255,255,255,0.18);
+    font-weight: 600;
+  }
+
+  /* Stat tiles: thin lines, condensed labels, thin big numbers */
+  .stat .label {
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: var(--eyebrow-spacing);
+    font-size: 10.5px;
+    font-weight: 600;
+  }
+  .stat .value {
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .stat .sub { color: var(--ink-soft); }
+  .stat.highlight {
+    background: var(--card-2);
+    border: 1px solid var(--gold);
+  }
+  .stat.highlight .label { color: var(--gold); }
+  .stat .new-badge {
+    background: transparent;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+  }
+
+  /* --- Controls / pills --- */
+  .controls {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 3px;
+  }
+  .controls button {
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 11px;
+    border-radius: 2px;
+    padding: 6px 12px;
+  }
+  .controls button:hover { color: var(--ink); }
+  .controls button.active {
+    background: var(--ink);
+    color: #000;
+    font-weight: 700;
+  }
+
+  .pill-select {
+    background-color: var(--card);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 11px;
+    padding: 7px 30px 7px 12px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' stroke='%23b8b8b8' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  .pill-select:hover { border-color: var(--ink-soft); }
+  .pill-select:focus { outline: none; border-color: var(--ink); }
+  /* Make the native dropdown legible in dark mode */
+  .pill-select option { background: #111; color: var(--ink); }
+
+  /* Group filter active colors stay distinct but on dark surface */
+  .filter-row .controls button[data-filter="cousins"].active { background: #E11D48; color: #fff; }
+  .filter-row .controls button[data-filter="friends"].active { background: #0EA5E9; color: #fff; }
+  .filter-row .filter-label { color: var(--muted); letter-spacing: var(--eyebrow-spacing); }
+
+  /* Live price pill */
+  .price-pill {
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 10.5px;
+    border-radius: 4px;
+  }
+  .price-pill button { color: var(--teal); }
+  .price-pill button:hover { background: var(--teal-soft); }
+
+  /* Why nav link */
+  .why-nav-link {
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    color: var(--ink-soft);
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 10.5px;
+    padding: 6px 12px;
+  }
+  .why-nav-link:hover { color: var(--ink); border-color: var(--ink-soft); }
+
+  /* --- Section headings on home --- */
+  .group-h {
+    background: transparent;
+    border-left: 2px solid var(--group-accent, var(--teal));
+    border-radius: 0;
+    padding: 4px 14px;
+  }
+  .group-h h3 { color: var(--ink); letter-spacing: var(--eyebrow-spacing); }
+  .group-h .group-sub { color: var(--ink-soft); }
+  .group-h .group-count { color: var(--muted); }
+
+  /* --- Tables --- */
+  th { color: var(--muted); letter-spacing: var(--eyebrow-spacing); }
+  th, td { border-bottom: 1px solid var(--line); }
+  td { color: var(--ink-soft); }
+  td b, td strong { color: var(--ink); font-weight: 500; }
+
+  .ticker-pill {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    border-radius: 3px;
+    letter-spacing: 0.08em;
+  }
+
+  /* Deltas / badges */
+  .delta.flat { background: var(--card-2); color: var(--ink-soft); }
+  .delta.up { background: var(--green-soft); color: var(--green); }
+  .delta.down { background: var(--red-soft); color: var(--red); }
+  .kid-card .badge {
+    background: var(--badge-soft, var(--card-2));
+    color: var(--badge-ink, var(--ink-soft));
+    border: 1px solid var(--line-strong);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+  }
+
+  /* --- Kid hero: flat dark with colored accent band --- */
+  .kid-hero {
+    background: var(--card);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--kid-color, var(--teal));
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .kid-hero::before, .kid-hero::after {
+    background: radial-gradient(circle, rgba(255,255,255,0.04), transparent 70%);
+  }
+  .kid-hero .big-emoji {
+    background: var(--card-2);
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+  }
+  .kid-hero h1 {
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+  }
+  .kid-hero .sub { color: var(--ink-soft); opacity: 1; }
+  .kid-hero .counter {
+    background: var(--card-2);
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+  }
+  .kid-hero .counter b { color: var(--ink); }
+
+  /* --- Why hero: flat dark with gold accent band --- */
+  .why-hero {
+    background: var(--card);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--gold);
+  }
+  .why-hero::before, .why-hero::after {
+    background: radial-gradient(circle, rgba(255,255,255,0.03), transparent 70%);
+  }
+  .why-hero .eyebrow {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    letter-spacing: var(--eyebrow-spacing);
+    border-radius: 3px;
+  }
+  .why-hero h1 { font-weight: 400; text-transform: uppercase; letter-spacing: 0.01em; }
+  .why-hero .lede { color: var(--ink-soft); opacity: 1; }
+
+  /* --- Why panels / closing --- */
+  .why-panel { background: var(--card); border: 1px solid var(--line); }
+  .why-panel::before { background: var(--wp-accent, var(--teal)); width: 2px; }
+  .why-panel .tag-pill,
+  .why-closing .tag-pill {
+    background: transparent;
+    color: var(--wp-accent, var(--teal));
+    border: 1px solid var(--wp-accent, var(--teal));
+    letter-spacing: var(--eyebrow-spacing);
+    border-radius: 3px;
+  }
+  .why-panel h2 { color: var(--ink); font-weight: 500; letter-spacing: 0.01em; }
+  .why-panel p { color: var(--ink-soft); }
+  .why-panel strong { color: var(--ink); }
+  .why-closing { border: 1px solid var(--line); }
+  .why-closing::before { background: var(--wp-accent, var(--gold)); width: 2px; }
+  .why-closing h2 { color: var(--ink); font-weight: 500; }
+  .why-closing p { color: var(--ink-soft); }
+  .why-closing strong { color: var(--ink); }
+  .why-section-h { color: var(--ink); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
+
+  /* --- Lesson / callouts: flat dark with colored left rule --- */
+  .lesson {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--gold);
+    border-radius: var(--radius);
+  }
+  .lesson .tag {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    letter-spacing: var(--eyebrow-spacing);
+    border-radius: 3px;
+  }
+  .lesson h3 { color: var(--ink); font-weight: 500; }
+  .lesson .body { color: var(--ink-soft); }
+  .lesson .body strong, .lesson .body b { color: var(--ink); }
+
+  .fhsa-callout {
+    background: var(--card-2);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--gold);
+    border-radius: 4px;
+  }
+  .fhsa-callout h3 { color: var(--ink); }
+  .fhsa-callout p, .fhsa-callout ul { color: var(--ink-soft); }
+  .fhsa-callout strong { color: var(--ink); }
+  .fhsa-callout.bonus { background: var(--gold-soft); border-left-width: 3px; }
+  .fhsa-callout .bonus-note { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+
+  .compound-mini {
+    background: var(--card-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .compound-mini .yrs { color: var(--blue); letter-spacing: var(--eyebrow-spacing); }
+  .compound-mini .amt { color: var(--ink); font-weight: 400; }
+  .compound-mini .lbl { color: var(--muted); }
+
+  .help {
+    background: var(--card-2);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--blue);
+    color: var(--ink-soft);
+    border-radius: 4px;
+  }
+  .warn {
+    background: var(--card-2);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--gold);
+    color: var(--ink-soft);
+    border-radius: 4px;
+  }
+
+  .email-preview {
+    background: var(--card-2);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    border-radius: 4px;
+  }
+
+  /* Ownership chart (about page) */
+  .ownership-chart {
+    background: var(--card-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .ownership-chart-title { color: var(--ink); }
+  .ownership-legend { color: var(--ink-soft); }
+  .ownership-year { color: var(--ink); letter-spacing: var(--eyebrow-spacing); }
+  .ownership-stat { color: var(--ink-soft); }
+  .ownership-source { color: var(--muted); }
+  .waffle-cell { background: #222; }
+  .ownership-swatch-neutral { background: #2a2a2a; }
+
+  /* Quote cards */
+  .quote-card { border-top: 2px solid var(--q-accent, var(--teal)); }
+  .quote-card blockquote { color: var(--ink); }
+  .quote-card .mark { opacity: 0.18; }
+  .quote-card .who { color: var(--ink-soft); }
+  .quote-card .who .role { color: var(--muted); }
+
+  /* Concept tiles */
+  .concept { border-top: 2px solid var(--c, var(--teal)); }
+  .concept h3 { color: var(--ink); font-weight: 500; }
+  .concept p { color: var(--ink-soft); }
+
+  /* CTA */
+  .home-cta {
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: var(--eyebrow-spacing);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .home-cta:hover { border-color: var(--ink); color: var(--ink); }
+
+  /* Breadcrumbs */
+  .breadcrumbs { color: var(--muted); }
+  .breadcrumbs a { color: var(--ink-soft); }
+  .breadcrumbs a:hover { color: var(--ink); }
+
+  /* Holdings list */
+  .holding {
+    background: var(--card-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .holding .tk { color: var(--ink); }
+  .holding .nm { color: var(--ink-soft); }
+  .holding .v .big { color: var(--ink); font-weight: 400; }
+  .holding .v .small { color: var(--muted); }
+
+  /* Transaction timeline */
+  .timeline::before { background: var(--line); }
+  .tx::before { box-shadow: 0 0 0 3px var(--bg); }
+  .tx-event { color: var(--ink); font-weight: 500; }
+  .tx-date { color: var(--muted); letter-spacing: 0.08em; }
+  .tx-detail { color: var(--ink-soft); }
+  .tx-amount { color: var(--ink); }
+
+  /* Footnote */
+  .footnote { color: var(--muted); }
+  .footnote a { color: var(--ink-soft); }
+  .footnote a:hover { color: var(--ink); }
+
+  /* Selection color */
+  ::selection { background: rgba(255,255,255,0.18); color: #fff; }
+
+  /* Mobile tweaks layered on top of the existing 640px block */
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 22px; }
+    .kid-hero h1 { font-size: 22px; }
+    .why-hero h1 { font-size: 26px; }
+  }
+</style>
+</head>
+<body class="route-home">
+
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="#/" onclick="navHome(event)">
+      <span class="brand-mark">📈</span>
+      <span>
+        FHSA Fun(ds)
+        <div class="brand-sub">Portfolios for the next generation</div>
+      </span>
+    </a>
+    <span class="spacer"></span>
+    <a class="why-nav-link" href="#/why">📖 Why I started investing for you</a>
+  </div>
+</header>
+
+<main>
+  <!-- ===================== HOME ===================== -->
+  <section id="home">
+    <div class="stat-grid" id="homeStats">
+      <div class="stat"><div class="label">Total invested</div><div class="value" id="hInvested">–</div><div class="sub" id="hInvestedSub">What I’ve put in so far</div></div>
+      <div class="stat"><div class="label">Current value</div><div class="value" id="hAum">–</div><div class="sub" id="hAumSub">Across all portfolios</div></div>
+      <div class="stat"><div class="label">Yearly growth</div><div class="value" id="hXirr">–</div><div class="sub" id="hXirrSub">Money-weighted, all portfolios</div></div>
+      <div class="stat highlight"><div class="label" id="hNextHandoffLabel">First handoff</div><div class="value" id="hNextHandoff">–</div><div class="sub" id="hNextHandoffSub"></div></div>
+      <div class="stat"><div class="label">Paid out at 18</div><div class="value" id="hPaidOut">–</div><div class="sub" id="hPaidOutSub">DPI: distributions vs. invested</div></div>
+    </div>
+
+    <div class="filter-row" style="margin-top:22px">
+      <label class="filter-label" for="groupSelect">Show:</label>
+      <select id="groupSelect" class="pill-select" data-value="all">
+        <option value="all">Everyone</option>
+        <option value="cousins">Cousins</option>
+        <option value="friends">Friends' kids</option>
+      </select>
+    </div>
+
+    <div class="section-h"><h2>Everyone's portfolio over time</h2></div>
+    <div class="panel">
+      <div class="chart-range" id="combinedRange" role="group" aria-label="Time range"></div>
+      <div class="chart-wrap tall"><canvas id="combinedChart"></canvas></div>
+      <div class="help" style="margin-top:12px">
+        Each line shows what one portfolio has been worth over time. Click a name in the legend to focus on just that person. Click more names to add them back in. Click the focused name again to show everyone.
+      </div>
+    </div>
+
+    <div class="section-h">
+      <h2>Leaderboard</h2>
+      <select id="sortSelect" class="pill-select" aria-label="Sort leaderboard by">
+        <option value="age">By age</option>
+        <option value="value">By value</option>
+        <option value="xirr">By yearly growth</option>
+        <option value="next">Next gift</option>
+      </select>
+    </div>
+    <div id="leaderboard" class="grid"></div>
+
+    <div class="section-h">
+      <h2>Coming up</h2>
+      <span class="small">Next 5 gift occasions</span>
+    </div>
+    <div class="panel" id="comingUp"></div>
+
+    <div id="dqWarn" style="margin-top:22px; display:none">
+      <div class="warn">
+        <b>Data quality notes (for the owner):</b>
+        <ul id="dqList" style="margin:6px 0 0 18px; padding:0"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== KID VIEW ===================== -->
+  <section id="kid-view">
+    <div class="breadcrumbs">
+      <a href="#/" onclick="navHome(event)">← All portfolios</a>
+      <span id="bcName"></span>
+    </div>
+
+    <div id="kidHero" class="kid-hero">
+      <div class="who">
+        <div class="big-emoji" id="kidEmoji"></div>
+        <div>
+          <h1 id="kidName"></h1>
+          <div class="name-badges" id="kidNameBadges"></div>
+          <div class="sub" id="kidSub"></div>
+        </div>
+      </div>
+      <div class="counter" id="kidCounter"></div>
+      <div class="counter" id="kidCounter18"></div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="label">Cost basis</div><div class="value" id="sCost">–</div><div class="sub" id="sCostSub">What I invested for you</div></div>
+      <div class="stat"><div class="label">Portfolio value</div><div class="value" id="sValue">–</div><div class="sub" id="sValueSub"></div></div>
+      <div class="stat"><div class="label">Gain / loss</div><div class="value" id="sGain">–</div><div class="sub" id="sGainSub"></div></div>
+      <div class="stat highlight"><div class="label">Yearly growth</div><div class="value" id="sXirr">–</div><div class="sub" id="sXirrSub"></div></div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div class="section-h" style="margin-top:0"><h2>Value over time</h2></div>
+      <div class="chart-range" id="kidRange" role="group" aria-label="Time range"></div>
+      <div class="chart-wrap tall"><canvas id="kidChart"></canvas></div>
+      <div class="help" style="margin-top:12px" id="chartHelp">The line shows what your portfolio has been worth over time. The dashed line is what was actually spent. The gap is the gain/loss.</div>
+    </div>
+
+    <div class="panel-row" style="margin-top:16px">
+      <div class="panel">
+        <div class="section-h" style="margin-top:0"><h2>Your gifts so far</h2></div>
+        <div id="timeline" class="timeline"></div>
+      </div>
+      <div class="panel">
+        <div class="section-h" style="margin-top:0"><h2>What you own</h2></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="donutChart"></canvas></div>
+        <div id="holdingsList" class="holdings" style="margin-top:14px"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div class="section-h" style="margin-top:0"><h2>About what you own</h2></div>
+      <div id="etfList"></div>
+    </div>
+
+    <div class="panel" style="margin-top:16px" id="houseFundPanel">
+      <div class="section-h" style="margin-top:0"><h2>🏡 House fund</h2></div>
+      <p class="hf-caption" id="hfCaption"></p>
+      <div id="hfBars"></div>
+      <p class="proj-disclaimer" id="hfNote"></p>
+    </div>
+
+    <div class="panel" style="margin-top:16px" id="projPanel">
+      <div class="section-h" style="margin-top:0"><h2 id="projHeading">Where this could go</h2></div>
+      <div class="chart-wrap tall"><canvas id="projChart"></canvas></div>
+      <div class="help" style="margin-top:12px" id="projWow"></div>
+      <p class="proj-disclaimer" id="projDisclaimer">These three paths are illustrations, not promises. Real markets zig and zag, and nobody (not even the pros) knows which path yours will follow. The middle one uses the market's rough long-term average; the other two show a slower and a faster decade. The point is the direction, not the exact number.</p>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div class="section-h" style="margin-top:0"><h2>🏅 Badges</h2><span class="small" id="badgeCount"></span></div>
+      <div id="badgeShelf" class="badge-shelf"></div>
+    </div>
+
+    <div class="panel" style="margin-top:16px" id="birthdayBox" hidden>
+      <div class="section-h" style="margin-top:0"><h2>🎂 Birthday email preview</h2></div>
+      <div class="email-preview" id="emailPreview"></div>
+    </div>
+  </section>
+
+  <!-- ===================== WHY VIEW ===================== -->
+  <section id="why-view">
+    <div class="breadcrumbs">
+      <a href="#/" onclick="navHome(event)">← Back to all portfolios</a>
+    </div>
+
+    <div class="why-hero">
+      <h1>Why I started investing for you</h1>
+      <p class="lede">Every birthday and Christmas, I’ve been tucking a little money into the stock market for you. Not the most exciting gift, I know, but on your 18th birthday it’s yours. Here’s the thinking behind it.</p>
+    </div>
+
+    <!-- WHY: Housing + FHSA -->
+    <div class="why-panel" style="--wp-accent: var(--teal); --wp-bg: var(--teal-soft);">
+      <span class="tag-pill">The reason</span>
+      <h2>🏡 Houses cost way more than they used to</h2>
+      <p><strong>Money won’t make you happy. But it will buy you <em>room</em>. Room to say no when something isn’t right. Room to take a swing. Room to support loved ones who need you.</strong></p>
+      <p>A house is the biggest piece of room most people ever buy. Unfortunately, housing has gotten a lot less affordable over my lifetime. <strong>In 1986, the year I was born, a Canadian home cost about three to four years of an average salary. Today that ratio is closer to <u>eight</u>.</strong></p>
+      <p style="font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5;">Sources: <a href="https://www.statcan.gc.ca/en/subjects-start/housing" target="_blank" rel="noopener" style="color: var(--teal);">Statistics Canada housing statistics</a> and the <a href="https://www.bankofcanada.ca/rates/indicators/capacity-and-inflation-pressures/real-estate-market-definitions/" target="_blank" rel="noopener" style="color: var(--teal);">Bank of Canada housing affordability index</a>.</p>
+      <p>When a house takes that long to afford, people stay home longer.</p>
+      <div class="ownership-chart">
+        <p class="ownership-chart-title">Out of every 100 Canadians aged 25 to 29, how many still live with a parent</p>
+        <div class="ownership-chart-grid">
+          <div class="ownership-panel">
+            <p class="ownership-year">1986</p>
+            <div class="ownership-waffle" data-parents="15"></div>
+            <p class="ownership-stat">
+              <span class="ownership-stat-pair"><strong class="ownership-num-gold">15</strong>live with a parent</span>
+            </p>
+          </div>
+          <div class="ownership-legend">
+            <span class="ownership-legend-item"><span class="ownership-swatch ownership-swatch-gold"></span>Lives with a parent</span>
+            <span class="ownership-legend-item"><span class="ownership-swatch ownership-swatch-neutral"></span>Doesn’t</span>
+          </div>
+          <div class="ownership-panel">
+            <p class="ownership-year">2021</p>
+            <div class="ownership-waffle" data-parents="31"></div>
+            <p class="ownership-stat">
+              <span class="ownership-stat-pair"><strong class="ownership-num-gold">31</strong>live with a parent</span>
+            </p>
+          </div>
+        </div>
+        <p class="ownership-source">In the 35 years between those two censuses, the share of young adults still at home doubled: 15.2% in 1986, 31.0% in 2021. Sources: Statistics Canada, <a href="https://www12.statcan.gc.ca/census-recensement/2011/as-sa/98-312-x/2011003/fig/fig3_3-1-eng.cfm" target="_blank" rel="noopener">living arrangements of young adults</a> (1986) and <a href="https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=9810013701" target="_blank" rel="noopener">Table 98-10-0137-01</a> (2021).</p>
+      </div>
+      <script>
+      (function(){
+        document.querySelectorAll('.ownership-waffle').forEach(function(el){
+          var parents = parseInt(el.dataset.parents, 10) || 0;
+          var html = '';
+          for (var i = 0; i < 100; i++) {
+            html += '<div class="waffle-cell' + (i < parents ? ' on-gold' : '') + '"></div>';
+          }
+          el.innerHTML = html;
+        });
+      })();
+      </script>
+    </div>
+
+    <!-- WHY: Earning beats investing -->
+    <div class="why-panel" style="--wp-accent: var(--red); --wp-bg: var(--red-soft);">
+      <span class="tag-pill">But first, do great work</span>
+      <h2>💼 Investing is the encore</h2>
+      <p><strong>At the risk of being <em>that</em> uncle handing out unsolicited life advice:</strong> the most important thing you can do for future-you is develop your talents and put them to work in the world. Build skills, build habits, do good work, the kind that makes other people’s lives better. That’s what gets rewarded over a lifetime, and it’s the one thing nobody can give you.</p>
+      <p>Warren Buffett, who knows a thing or two about money, <a href="https://x.com/Barchart/status/2056213559151841343?s=20" target="_blank" rel="noopener" style="color: var(--red);">makes this point well</a>: how much you earn over a career matters more than how cleverly you invest it. A great investor with no income has nothing to compound. A great earner with average investments will still do just fine.</p>
+      <p>So do good work first. Get really good at something. Be useful to people. Once that’s flowing, figuring out what to do with the harvest (the part everything below is about) becomes the easy follow-up.</p>
+    </div>
+
+    <h2 class="why-section-h">Three rules that do most of the work</h2>
+
+    <!-- LESSON 1: Diversification -->
+    <div class="why-panel" style="--wp-accent: var(--purple); --wp-bg: #EDE9FE;">
+      <span class="tag-pill">Rule 1 · Diversification</span>
+      <h2>🧺 Don’t bet on one company. Own a slice of hundreds.</h2>
+      <p><strong>If one company has a rough year, the others pick up the slack.</strong></p>
+      <p>That’s exactly what your ETFs do. Each share holds a piece of the 500 biggest U.S. companies: Apple, Microsoft, Costco, Google, Coca-Cola, the rest. One share, 500 companies.</p>
+    </div>
+
+    <!-- LESSON 2: DCA -->
+    <div class="why-panel" style="--wp-accent: var(--blue); --wp-bg: #DBEAFE;">
+      <span class="tag-pill">Rule 2 · Dollar-cost averaging</span>
+      <h2>💵 A little, regularly. Not a lot, occasionally.</h2>
+      <p><strong>Buy on a steady schedule. Don’t try to time the market. Nobody can, including the pros on Wall Street.</strong></p>
+      <p>When you buy a little at a time, you accidentally pick up more shares when prices are low and fewer when they’re high. That’s what I’ve been doing for you: a bit every birthday, a bit every Christmas. No clever timing, just consistency.</p>
+    </div>
+
+    <!-- LESSON 3: Compounding -->
+    <div class="why-panel" style="--wp-accent: var(--gold); --wp-bg: var(--gold-soft);">
+      <span class="tag-pill">Rule 3 · Compounding</span>
+      <h2>🪄 The 8th wonder of the world</h2>
+      <p><strong>Money you’ve made starts making its own money. Slow at first, ridiculous toward the end.</strong></p>
+      <p>Einstein supposedly called <em>compound interest</em> “the eighth wonder of the world.” Here’s what $100 a year turns into at a typical market return:</p>
+      <div class="compound-mini">
+        <div class="cell">
+          <div class="yrs">After 10 yrs</div>
+          <div class="amt">~$1,400</div>
+          <div class="lbl">$1,000 put in</div>
+        </div>
+        <div class="cell">
+          <div class="yrs">After 30 yrs</div>
+          <div class="amt">~$11,000</div>
+          <div class="lbl">$3,000 put in</div>
+        </div>
+        <div class="cell">
+          <div class="yrs">After 50 yrs</div>
+          <div class="amt">~$57,000</div>
+          <div class="lbl">$5,000 put in</div>
+        </div>
+      </div>
+      <p style="margin-top:14px">Same $100 a year. The last 20 years do <em>way</em> more work than the first 20. That’s why I started early for you. The clock will do the heavy lifting.</p>
+    </div>
+
+    <!-- QUOTES -->
+    <h2 class="why-section-h">Said better, by people way smarter than me</h2>
+    <div class="quote-grid">
+      <div class="quote-card" style="--q-accent: var(--purple);">
+        <span class="mark">“</span>
+        <blockquote>Don’t look for the needle in the haystack. Just buy the haystack.</blockquote>
+        <div class="who">John C. Bogle<span class="role">Invented the index fund</span></div>
+      </div>
+      <div class="quote-card" style="--q-accent: var(--blue);">
+        <span class="mark">“</span>
+        <blockquote>Just keep buying. As frequently as you can. For as long as you can.</blockquote>
+        <div class="who">Nick Maggiulli<span class="role">Author of <em>Just Keep Buying</em></span></div>
+      </div>
+      <div class="quote-card" style="--q-accent: var(--gold);">
+        <span class="mark">“</span>
+        <blockquote>Someone is sitting in the shade today because someone planted a tree a long time ago.</blockquote>
+        <div class="who">Warren Buffett<span class="role">Runs Berkshire Hathaway</span></div>
+      </div>
+      <div class="quote-card" style="--q-accent: var(--gold);">
+        <span class="mark">“</span>
+        <blockquote>The first rule of compounding: never interrupt it unnecessarily.</blockquote>
+        <div class="who">Charlie Munger<span class="role">Buffett’s longtime partner</span></div>
+      </div>
+    </div>
+
+    <!-- CLOSING -->
+    <div class="why-closing" style="--wp-accent: var(--gold); --wp-bg: var(--gold-soft);">
+      <span class="tag-pill">The handoff</span>
+      <h2>When you turn 18 and your portfolio is yours to manage</h2>
+
+      <p>On your 18th birthday: I'll sell the ETFs I've bought for you and e-transfer you the cash so that you can drop it straight into an FHSA in your name. From there, you can decide how to invest it (ETFs are a fine choice) and keep growing it tax-free.</p>
+
+      <div class="fhsa-callout">
+        <h3>💡 What’s an FHSA?</h3>
+        <p>The <strong>First Home Savings Account</strong> is built for first-time Canadian buyers. Two perks: your money grows <strong>tax-free</strong> inside it, and you get a <strong>tax break</strong> on what you put in (up to $8,000/year, $40,000 lifetime). The tax break means every dollar you put in comes off your income when you file your taxes, so you owe less or get a bigger refund. If you don't earn much yet, you can save the deduction and claim it in a later year, when your income is higher and it's worth more.</p>
+      </div>
+
+      <p style="margin-top:14px">If you keep adding to your FHSA once you're earning, and invest it wisely (again, ETFs are a fine choice), you should be in a position to put 20% down on a home before most can. That's a smaller club than it used to be.</p>
+
+      <div class="fhsa-callout bonus">
+        <h3>🔑 And $100 more if you do it</h3>
+        <p>Open an FHSA account in your name and invest the money I hand off to you <strong>within thirty days of your 18th birthday</strong>, and I'll e-transfer you <strong>$100</strong> to invest or celebrate with.</p>
+        <p>The hard part of investing isn't picking funds. It's starting. I'd rather pay you to start than have the money I send you sit in a chequing account.</p>
+        <p class="bonus-note">Do it and the 🔑 <strong>FHSA opened</strong> badge unlocks on your page.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="footnote">
+    Demo data, four fictional kids · Prices via Yahoo Finance · All amounts in CAD.
+    Past performance isn’t a promise of future returns. This is a long game, hence the buy-and-hold approach.
+  </div>
+</main>
+
+<script>
+// ============================================================
+// DATA: embedded so this file works offline.
+// ============================================================
+const DATA = /*__DATA__*/ {
+  meta: {
+    currency: "CAD",
+    generated: new Date().toISOString(),
+    note: "Demo data: four fictional kids, real ETF prices."
+  },
+  kids: [
+    { id:"avery", name:"Avery", emoji:"🚀", group:"cousins", groupLabel:"Cousin", relationship:"cousin",
+      birthDate:"2010-03-18", giftDays:["03-18", "12-25"], color:"#E11D48", color2:"#881337",
+      transactions:[
+        {event:"Christmas", date:"2024-12-25", ticker:"XUS.TO", shares:2, price:54.03},
+        {event:"15th Birthday", date:"2025-03-18", ticker:"VSP.TO", shares:1, price:90.63},
+        {event:"Christmas", date:"2025-12-25", ticker:"VSP.TO", shares:1, price:110.29},
+        {event:"16th Birthday", date:"2026-03-18", ticker:"VSP.TO", shares:1, price:105.03}
+      ]
+    },
+    { id:"rowan", name:"Rowan", nickname:"Ro", emoji:"🎸", group:"cousins", groupLabel:"Cousin", relationship:"cousin",
+      birthDate:"2013-08-02", giftDays:["08-02", "12-25"], color:"#7C3AED", color2:"#4C1D95",
+      transactions:[
+        {event:"11th Birthday", date:"2024-08-02", ticker:"XUS.TO", shares:2, price:45.91},
+        {event:"Christmas", date:"2024-12-25", ticker:"XUS.TO", shares:2, price:54.03},
+        {event:"12th Birthday", date:"2025-08-02", ticker:"VSP.TO", shares:1, price:99.85},
+        {event:"Christmas", date:"2025-12-25", ticker:"VSP.TO", shares:1, price:110.29},
+        {event:"13th Birthday", date:"2026-08-02", ticker:"VSP.TO", shares:1, price:116.60}
+      ]
+    },
+    { id:"sami", name:"Sami", emoji:"⚽", group:"friends", groupLabel:"Friend's kid", relationship:"my best friend's son",
+      birthDate:"2016-11-09", giftDays:["11-09", "12-24"], color:"#0EA5E9", color2:"#0C4A6E",
+      transactions:[
+        {event:"8th Birthday", date:"2024-11-09", ticker:"XUS.TO", shares:2, price:51.87},
+        {event:"Christmas", date:"2024-12-24", ticker:"XUS.TO", shares:2, price:54.03},
+        {event:"9th Birthday", date:"2025-11-09", ticker:"VSP.TO", shares:1, price:107.24},
+        {event:"Christmas", date:"2025-12-24", ticker:"VSP.TO", shares:1, price:110.29}
+      ]
+    },
+    { id:"noor", name:"Noor", nickname:"Noori", emoji:"🦋", group:"friends", groupLabel:"Friend's kid", relationship:"my best friend's daughter",
+      birthDate:"2008-06-27", giftDays:["06-27", "12-25"], color:"#16A34A", color2:"#14532D",
+      transactions:[
+        {event:"16th Birthday", date:"2024-06-27", ticker:"XUS.TO", shares:2, price:46.51},
+        {event:"Christmas", date:"2024-12-25", ticker:"XUS.TO", shares:2, price:54.03},
+        {event:"17th Birthday", date:"2025-06-27", ticker:"VSP.TO", shares:1, price:99.13},
+        {event:"Christmas", date:"2025-12-25", ticker:"VSP.TO", shares:1, price:110.29},
+        {event:"18th Birthday", date:"2026-06-27", ticker:"VSP.TO", shares:1, price:116.60}
+      ]
+    }
+  ],
+  tickers: {
+    "XUS.TO": { name:"iShares Core S&P 500 Index ETF (CAD-Hedged)", short:"iShares S&P 500", priceFallback: 61.20,
+                explain:"This ETF buys little slivers of the 500 biggest companies in America. 'CAD-hedged' means the manager smooths out swings in the US dollar vs. Canadian dollar, so you mostly just get the S&P 500's performance, without surprises from currency." },
+    "VFV.TO": { name:"Vanguard S&P 500 Index ETF",                short:"Vanguard S&P 500", priceFallback: 175.46,
+                explain:"Same idea: a slice of all 500 of the biggest American companies in one share. This one is *not* currency-hedged, so when the US dollar gets stronger vs. the Canadian dollar, you actually win a little extra." },
+    "VSP.TO": { name:"Vanguard S&P 500 Index ETF (CAD-Hedged)",   short:"Vanguard S&P 500 (Hedged)", priceFallback: 112.93,
+                explain:"Vanguard's CAD-hedged version of their S&P 500 ETF. Cheap, simple, and you don't have to worry about the exchange rate moving against you." }
+  },
+  // Down-payment benchmark for the House fund bars. Manually updated, not a
+  // live fetch. A kid-level homeCity: { label, price, asOf } overrides it.
+  homeBenchmark: {
+    label: "average Canadian home",
+    price: 702079,
+    asOf: "May 2026",
+    source: "CREA national average"
+  },
+  dataQuality: [],
+  groups: [
+    { id:"cousins", label:"Cousins", subtitle:"My two cousins", accent:"#E11D48", accentSoft:"#FFE4E6" },
+    { id:"friends", label:"Friends' kids", subtitle:"My best friend's two", accent:"#0EA5E9", accentSoft:"#E0F2FE" }
+  ]
+};
+
+// ============================================================
+// PRICE HISTORY: daily closes baked in at build time (Yahoo Finance, ~2y back).
+// Used to compute true portfolio value over time. Live refresh updates the
+// most recent point only.
+// ============================================================
+let PRICE_DATES = ["2024-05-15","2024-05-16","2024-05-17","2024-05-21","2024-05-22","2024-05-23","2024-05-24","2024-05-27","2024-05-28","2024-05-29","2024-05-30","2024-05-31","2024-06-03","2024-06-04","2024-06-05","2024-06-06","2024-06-07","2024-06-10","2024-06-11","2024-06-12","2024-06-13","2024-06-14","2024-06-17","2024-06-18","2024-06-19","2024-06-20","2024-06-21","2024-06-24","2024-06-25","2024-06-26","2024-06-27","2024-06-28","2024-07-02","2024-07-03","2024-07-04","2024-07-05","2024-07-08","2024-07-09","2024-07-10","2024-07-11","2024-07-12","2024-07-15","2024-07-16","2024-07-17","2024-07-18","2024-07-19","2024-07-22","2024-07-23","2024-07-24","2024-07-25","2024-07-26","2024-07-29","2024-07-30","2024-07-31","2024-08-01","2024-08-02","2024-08-06","2024-08-07","2024-08-08","2024-08-09","2024-08-12","2024-08-13","2024-08-14","2024-08-15","2024-08-16","2024-08-19","2024-08-20","2024-08-21","2024-08-22","2024-08-23","2024-08-26","2024-08-27","2024-08-28","2024-08-29","2024-08-30","2024-09-03","2024-09-04","2024-09-05","2024-09-06","2024-09-09","2024-09-10","2024-09-11","2024-09-12","2024-09-13","2024-09-16","2024-09-17","2024-09-18","2024-09-19","2024-09-20","2024-09-23","2024-09-24","2024-09-25","2024-09-26","2024-09-27","2024-09-30","2024-10-01","2024-10-02","2024-10-03","2024-10-04","2024-10-07","2024-10-08","2024-10-09","2024-10-10","2024-10-11","2024-10-15","2024-10-16","2024-10-17","2024-10-18","2024-10-21","2024-10-22","2024-10-23","2024-10-24","2024-10-25","2024-10-28","2024-10-29","2024-10-30","2024-10-31","2024-11-01","2024-11-04","2024-11-05","2024-11-06","2024-11-07","2024-11-08","2024-11-11","2024-11-12","2024-11-13","2024-11-14","2024-11-15","2024-11-18","2024-11-19","2024-11-20","2024-11-21","2024-11-22","2024-11-25","2024-11-26","2024-11-27","2024-11-28","2024-11-29","2024-12-02","2024-12-03","2024-12-04","2024-12-05","2024-12-06","2024-12-09","2024-12-10","2024-12-11","2024-12-12","2024-12-13","2024-12-16","2024-12-17","2024-12-18","2024-12-19","2024-12-20","2024-12-23","2024-12-24","2024-12-27","2024-12-30","2024-12-31","2025-01-02","2025-01-03","2025-01-06","2025-01-07","2025-01-08","2025-01-09","2025-01-10","2025-01-13","2025-01-14","2025-01-15","2025-01-16","2025-01-17","2025-01-20","2025-01-21","2025-01-22","2025-01-23","2025-01-24","2025-01-27","2025-01-28","2025-01-29","2025-01-30","2025-01-31","2025-02-03","2025-02-04","2025-02-05","2025-02-06","2025-02-07","2025-02-10","2025-02-11","2025-02-12","2025-02-13","2025-02-14","2025-02-18","2025-02-19","2025-02-20","2025-02-21","2025-02-24","2025-02-25","2025-02-26","2025-02-27","2025-02-28","2025-03-03","2025-03-04","2025-03-05","2025-03-06","2025-03-07","2025-03-10","2025-03-11","2025-03-12","2025-03-13","2025-03-14","2025-03-17","2025-03-18","2025-03-19","2025-03-20","2025-03-21","2025-03-24","2025-03-25","2025-03-26","2025-03-27","2025-03-28","2025-03-31","2025-04-01","2025-04-02","2025-04-03","2025-04-04","2025-04-07","2025-04-08","2025-04-09","2025-04-10","2025-04-11","2025-04-14","2025-04-15","2025-04-16","2025-04-17","2025-04-21","2025-04-22","2025-04-23","2025-04-24","2025-04-25","2025-04-28","2025-04-29","2025-04-30","2025-05-01","2025-05-02","2025-05-05","2025-05-06","2025-05-07","2025-05-08","2025-05-09","2025-05-12","2025-05-13","2025-05-14","2025-05-15","2025-05-16","2025-05-20","2025-05-21","2025-05-22","2025-05-23","2025-05-26","2025-05-27","2025-05-28","2025-05-29","2025-05-30","2025-06-02","2025-06-03","2025-06-04","2025-06-05","2025-06-06","2025-06-09","2025-06-10","2025-06-11","2025-06-12","2025-06-13","2025-06-16","2025-06-17","2025-06-18","2025-06-19","2025-06-20","2025-06-23","2025-06-24","2025-06-25","2025-06-26","2025-06-27","2025-06-30","2025-07-02","2025-07-03","2025-07-04","2025-07-07","2025-07-08","2025-07-09","2025-07-10","2025-07-11","2025-07-14","2025-07-15","2025-07-16","2025-07-17","2025-07-18","2025-07-21","2025-07-22","2025-07-23","2025-07-24","2025-07-25","2025-07-28","2025-07-29","2025-07-30","2025-07-31","2025-08-01","2025-08-05","2025-08-06","2025-08-07","2025-08-08","2025-08-11","2025-08-12","2025-08-13","2025-08-14","2025-08-15","2025-08-18","2025-08-19","2025-08-20","2025-08-21","2025-08-22","2025-08-25","2025-08-26","2025-08-27","2025-08-28","2025-08-29","2025-09-02","2025-09-03","2025-09-04","2025-09-05","2025-09-08","2025-09-09","2025-09-10","2025-09-11","2025-09-12","2025-09-15","2025-09-16","2025-09-17","2025-09-18","2025-09-19","2025-09-22","2025-09-23","2025-09-24","2025-09-25","2025-09-26","2025-09-29","2025-09-30","2025-10-01","2025-10-02","2025-10-03","2025-10-06","2025-10-07","2025-10-08","2025-10-09","2025-10-10","2025-10-14","2025-10-15","2025-10-16","2025-10-17","2025-10-20","2025-10-21","2025-10-22","2025-10-23","2025-10-24","2025-10-27","2025-10-28","2025-10-29","2025-10-30","2025-10-31","2025-11-03","2025-11-04","2025-11-05","2025-11-06","2025-11-07","2025-11-10","2025-11-11","2025-11-12","2025-11-13","2025-11-14","2025-11-17","2025-11-18","2025-11-19","2025-11-20","2025-11-21","2025-11-24","2025-11-25","2025-11-26","2025-11-27","2025-11-28","2025-12-01","2025-12-02","2025-12-03","2025-12-04","2025-12-05","2025-12-08","2025-12-09","2025-12-10","2025-12-11","2025-12-12","2025-12-15","2025-12-16","2025-12-17","2025-12-18","2025-12-19","2025-12-22","2025-12-23","2025-12-24","2025-12-29","2025-12-30","2025-12-31","2026-01-02","2026-01-05","2026-01-06","2026-01-07","2026-01-08","2026-01-09","2026-01-12","2026-01-13","2026-01-14","2026-01-15","2026-01-16","2026-01-19","2026-01-20","2026-01-21","2026-01-22","2026-01-23","2026-01-26","2026-01-27","2026-01-28","2026-01-29","2026-01-30","2026-02-02","2026-02-03","2026-02-04","2026-02-05","2026-02-06","2026-02-09","2026-02-10","2026-02-11","2026-02-12","2026-02-13","2026-02-17","2026-02-18","2026-02-19","2026-02-20","2026-02-23","2026-02-24","2026-02-25","2026-02-26","2026-02-27","2026-03-02","2026-03-03","2026-03-04","2026-03-05","2026-03-06","2026-03-09","2026-03-10","2026-03-11","2026-03-12","2026-03-13","2026-03-16","2026-03-17","2026-03-18","2026-03-19","2026-03-20","2026-03-23","2026-03-24","2026-03-25","2026-03-26","2026-03-27","2026-03-30","2026-03-31","2026-04-01","2026-04-02","2026-04-06","2026-04-07","2026-04-08","2026-04-09","2026-04-10","2026-04-13","2026-04-14","2026-04-15","2026-04-16","2026-04-17","2026-04-20","2026-04-21","2026-04-22","2026-04-23","2026-04-24","2026-04-27","2026-04-28","2026-04-29","2026-04-30","2026-05-01","2026-05-04","2026-05-05","2026-05-06","2026-05-07","2026-05-08","2026-05-11","2026-05-12","2026-05-13","2026-05-14","2026-05-15"];
+let PRICE_HISTORY = {"XUS.TO":[44.9,44.85,44.88,45.19,45.14,44.975,45.08,45.21,45.09,44.91,44.565,44.755,44.82,45.025,45.595,45.515,45.77,45.895,45.97,46.31,46.405,46.405,46.74,46.845,46.875,46.6,46.585,46.315,46.28,46.505,46.505,46.28,46.655,46.73,46.89,47.01,47.06,47.1,47.55,47.195,47.395,47.695,48.015,47.405,47.13,46.85,47.41,47.43,46.46,46.295,46.785,46.92,46.675,47.275,46.82,45.905,44.725,44.29,45.215,45.51,45.52,46.17,46.42,47.22,47.13,47.4,47.29,47.41,47,47.24,47.02,46.96,46.79,46.81,47.23,46.52,46.29,46.1,45.55,46.06,46.41,46.79,47.17,47.47,47.52,47.58,47.52,48.12,48.04,48,47.85,47.89,48.05,48.16,48.37,47.81,47.84,47.98,48.46,48.19,48.77,49.34,49.35,49.71,49.78,49.89,50.105,50.3,50.31,50.26,49.83,50,50.16,50.28,50.45,50.24,49.32,49.64,49.35,49.74,51.36,51.44,51.87,51.93,51.86,52.09,52,51.42,51.37,51.35,51.42,51.69,51.91,52.07,52.69,52.33,52.5,52.62,52.84,52.94,53.24,53.03,53.63,53.37,53.22,53.63,53.6,53.6,53.88,53.87,52.67,52.54,53.01,53.41,54.03,53.56,52.48,52.35,52.26,53.13,53.04,52.5,52.66,52.68,52.02,52.01,51.94,52.775,52.92,53.71,53.7,53.68,54.22,54.43,54.18,53.5,54.06,53.94,54.43,54.37,54.13,53.53,53.74,53.88,53.31,53.77,53.75,53.53,53.74,53.7,53.87,54.17,53.74,53.02,52.885,52.85,52.91,52.46,53.39,52.57,51.85,51.95,50.9,51.42,50.26,49.78,49.92,49.42,50.235,50.31,49.775,50.45,50.26,50.45,51.22,51.14,50.6,50.52,49.55,50.08,49.99,50.41,47.14,44.8,44.5,44.11,47.76,45.7,46.18,46.56,46.79,45.4,45.38,44.31,45.38,46.31,47.17,47.53,47.41,47.76,47.65,48.14,48.72,48.46,47.94,48.36,48.95,48.96,50.78,50.94,51.13,51.25,51.76,51.38,50.35,50.34,49.5,50.28,50.86,50.66,50.74,50.41,50.55,50.97,50.81,50.43,51.1,51.1,51.34,51.21,51.11,50.47,50.94,50.77,50.96,50.83,50.96,51.49,52.02,51.75,51.85,52.36,52.33,52.4,52.75,52.64,52.72,52.77,53.08,53.15,53.03,53.19,53.06,53.08,53.63,53.53,53.46,53.19,53.53,53.81,54.24,54.36,54.37,54.55,54.45,53.31,53.76,54.01,53.975,54.48,54.47,55.03,55.16,55.41,55.25,55.21,55.09,55.01,54.92,55.46,55.37,55.48,55.43,55.48,55.04,54.88,55.18,55.77,55.67,55.64,56.02,56.23,56.53,56.59,56.55,56.38,56.39,56.78,57.01,57.43,57.19,57.24,57.14,57.46,57.53,57.74,58.1,58.21,58.15,58.39,58.16,58.52,58.62,56.97,57.94,58.2,57.83,57.98,58.7,58.63,58.19,58.52,59.04,59.75,59.65,59.68,59.28,59.6,59.8,59.29,59.56,58.93,58.64,59.49,59.57,59.6,58.73,58.7,58.26,57.51,58.04,57.32,57.85,58.8,59.3,59.48,59.58,59.535,59.33,59.35,59.42,59.52,59.07,59.01,58.93,59.1,59.12,58.48,58.42,58.18,57.63,58.06,58.64,58.83,58.81,58.95,58.81,58.28,57.97,58.1,58.61,59.18,59.16,59.2,59.81,59.77,59.65,59.37,59.55,59.6,59.1,58.03,58.68,58.83,58.48,58.84,58.49,58.39,57.99,58.32,58.89,58.24,58.08,57.5,58.43,58.31,58.1,58.18,57.46,57.49,57.6,58.21,58.05,58.42,57.9,58.32,58.735,58.39,57.98,58.19,57.58,57.915,57.675,56.61,57.05,56.91,56.89,56.22,56.3,56.68,56.86,56.22,56.09,55.18,55.84,55.8,56.29,55.5,54.69,54.65,56.18,56.46,56.66,56.9,56.87,58.03,58.32,58.35,58.76,59.33,59.67,59.69,60.36,60.03,59.76,60.37,60.26,60.57,60.52,60.47,60.43,60.59,60.84,60.67,61.2,62.13,61.98,62.63,62.73,62.75,63.155,63.705,63.08],"VFV.TO":[128.3,128.11,128.2,129.04,129,128.51,128.78,128.92,128.65,128.33,127.25,127.83,128.05,128.59,130.24,130.02,130.76,131.14,131.39,132.3,132.75,132.66,133.59,133.84,134.09,133.16,133.11,132.33,132.88,133.53,133.42,132.46,133.53,133.93,133.63,134.51,134.81,134.79,136.08,135.05,135.65,136.54,137.34,135.76,134.93,134.16,135.84,135.77,132.99,132.43,133.97,134.3,133.6,135.3,133.98,131.47,128.1,126.88,129.69,130.22,130.35,132.26,132.76,135.15,134.92,135.74,135.4,135.68,134.7,135.15,134.55,134.34,133.92,133.96,135.19,133.05,132.53,132,130.37,131.81,132.81,133.88,135,135.87,136.04,136.21,136.02,137.69,137.5,137.33,137,137.23,137.68,137.44,138.05,136.51,136.6,136.99,138.39,137.6,139.2,140.83,140.86,141.94,142.19,142.47,143.01,143.6,143.7,143.47,142.31,142.78,143.19,143.52,144.06,143.37,140.91,141.88,140.95,141.97,146.65,146.95,148.07,148.36,148.05,148.77,148.45,146.9,146.67,146.66,146.84,147.57,148.17,148.68,150.43,149.42,149.78,150.36,150.88,151.18,152.03,151.43,153.08,152.46,152.01,153.11,153.03,153.14,153.88,153.91,150.9,150.09,151.67,152.59,154.25,153.05,150.35,149.99,149.87,152.25,151.77,150.45,150.92,150.76,149.05,149.02,148.8,151.18,151.58,153.9,153.9,153.79,155.3,155.95,155.23,153.31,154.94,154.5,155.96,155.78,154.94,153.38,153.96,154.34,152.74,154,153.92,153.39,153.94,153.85,154.35,155.21,154.03,151.95,151.5,151.34,151.71,150.33,153,150.7,148.6,148.8,145.81,147.37,144.04,142.67,143.08,141.68,143.98,144.12,142.76,144.57,144.04,144.61,146.75,146.67,145,144.44,141.53,143.03,142.85,143.92,134.61,128.02,127.94,125.9,136.49,130.87,131.96,132.95,133.67,129.7,129.68,126.6,129.63,132.49,134.79,135.88,135.46,136.4,136.13,137.5,139.3,138.4,136.93,138.21,139.84,139.89,145.08,145.5,146.11,146.48,147.85,146.79,143.87,143.79,141.41,143.58,145.28,144.75,144.98,143.95,144.5,145.54,145.14,144.07,146.02,146,146.74,146.32,146.12,144.26,145.6,145.14,145.65,145.11,145.74,147.1,148.68,148.65,148.92,150.3,149.87,150,151.15,150.77,150.98,151.07,151.97,152.19,151.91,152.33,151.96,152,153.53,153.3,153.06,152.24,153.37,154.02,155.37,155.68,155.74,156.21,155.91,152.73,153.93,154.69,154.62,155.93,155.93,157.61,157.93,158.58,158.16,158.07,157.85,157.52,157.28,158.75,158.5,158.86,158.7,158.83,157.46,157.09,158.01,159.67,159.51,159.4,160.39,160.96,161.93,162.02,161.93,161.46,161.49,162.62,163.28,164.5,163.78,164.02,163.7,164.56,164.34,164.99,165.91,166.28,166.11,166.75,166.09,167.16,167.43,162.83,165.52,166.25,165.2,165.67,167.65,167.46,166.27,167.19,168.68,170.7,170.44,170.61,169.34,170.28,170.8,169.33,170.13,168.31,167.57,169.95,170.24,170.23,167.81,167.56,166.48,164.29,165.84,163.76,165.23,167.9,169.47,169.94,170.28,170.08,169.36,169.56,169.78,170.01,168.76,168.53,168.34,168.85,168.9,167.2,166.99,166.23,164.75,165.93,167.56,168.04,168.09,168.4,168.05,167.53,166.62,167.08,168.42,170.1,170.11,170.17,171.9,171.75,171.45,170.65,171.2,171.34,169.31,166.78,168.7,169.05,168.07,169.08,168.18,167.8,166.7,167.64,169.27,167.45,166.89,165.38,168.09,167.58,166.99,167.22,165.1,165.25,165.7,167.24,166.88,167.92,166.38,167.64,168.78,167.84,166.62,167.14,165.66,166.5,165.83,162.82,164,164,163.54,161.58,161.8,162.91,163.51,161.58,161.4,158.73,160.68,160.43,161.85,159.57,156.7,156.67,160.99,161.83,162.41,163.06,163,166.4,167.14,167.26,168.3,170.09,171.06,171.14,172.99,172.09,171.19,173.05,172.72,173.6,173.47,173.26,173.2,173.81,174.29,173.93,175.46,178.07,177.8,179.42,179.89,179.96,181.01,182.68,180.84],"VSP.TO":[86.46,86.38,86.4,86.74,86.46,85.83,86.44,86.81,86.4,85.82,85.3,86.08,86.02,86.19,87.21,87.23,87.12,87.4,87.64,88.42,88.59,88.5,89.23,89.49,89.6,89.26,89.12,88.83,89.15,89.39,89.41,88.74,89.5,90.04,90.01,90.46,90.55,90.65,91.55,90.74,91.2,91.55,92.07,90.85,90.12,89.48,90.42,90.25,88.23,87.72,88.72,88.8,88.32,89.79,88.5,86.87,85.13,84.46,86.51,86.84,86.92,88.33,88.65,90.02,90.3,91.1,90.95,91.32,90.43,91.53,91.28,91.41,90.85,90.8,91.7,89.75,89.73,89.3,87.88,88.86,89.29,90.22,90.88,91.41,91.49,91.49,91.24,92.79,92.64,92.94,93.13,92.94,93.31,92.91,93.28,92.44,92.51,92.33,93.14,92.23,93.27,93.87,93.67,94.25,94.26,94.64,94.71,95.04,94.88,94.87,94,94.17,94.14,94.38,94.53,94.29,92.54,92.78,92.51,93.66,96.01,96.7,97.11,97.17,96.94,97,96.42,95.12,95.51,95.8,95.84,96.42,96.71,97.03,97.53,97.2,97.78,98.14,98,98.04,98.63,98.45,98.71,98.13,97.83,98.59,98.13,98.09,98.47,98.14,95.12,95.06,95.98,96.7,97.71,96.9,95.46,95.12,94.78,95.9,96.48,95.41,95.49,95.37,94.1,94.22,94.36,96.02,95.83,96.8,97.5,97.61,98.21,98.7,98.44,97.06,97.88,97.53,97.98,97.53,96.81,97.42,97.78,98.12,97.26,98,97.94,97.67,98.7,98.71,98.84,99.18,98.74,97.07,96.54,96.13,96.09,94.58,96.04,94.34,93.27,94.31,92.65,93.12,90.61,89.93,90.42,89.05,91.04,91.68,90.63,91.62,91.39,91.52,93.1,93.24,92.2,91.61,89.76,90.23,90.56,91.27,86.76,81.72,81.43,80.25,87.93,84.9,86.31,87.05,86.79,85.02,85.09,83.18,85.22,86.64,88.21,88.85,89.03,89.36,89.48,89.99,91.42,90.78,90.08,90.48,91.23,90.96,94,94.65,94.75,95.16,95.81,95.52,94.04,93.92,93.25,94.63,95.13,94.71,94.96,94.87,95.36,95.95,96,95.33,96.4,96.5,96.97,96.75,97.1,95.93,96.79,96.17,96.03,95.6,95.91,96.8,97.85,97.85,98.69,99.13,99.41,99.68,100.37,100.1,99.75,99.69,100.27,100.53,100.19,100.33,99.94,100.34,100.9,100.78,100.94,100.98,101.65,101.89,102.26,102.2,101.91,101.91,101.43,99.85,100.75,101.51,101.41,102.21,101.98,103.09,103.43,103.51,103.11,103.18,102.57,102.27,101.86,103.4,103.06,103.45,103.72,103.99,103.28,102.66,103.03,103.97,103.6,103.88,104.27,104.5,105.38,105.33,105.85,105.78,105.49,106.07,106.59,107.1,106.61,106.18,105.74,106.21,106.21,106.67,107.06,107.1,107.11,107.52,107.21,107.68,107.54,104.54,105.92,106.3,105.71,106.29,107.39,107.46,106.8,107.42,108.27,109.57,109.91,109.87,108.85,109.17,109.19,107.94,108.33,107.05,107.24,108.86,109.05,109.18,107.33,107.36,106.26,105.47,105.82,104.2,105.23,106.91,107.8,108.55,108.59,109,108.61,108.81,109.15,109.26,109.51,109.14,109.01,109.74,110,108.82,108.59,108.33,107.21,107.92,108.8,109.47,109.94,110.29,109.93,109.51,108.77,108.94,109.56,110.28,109.93,109.91,110.59,110.79,110.53,110.02,110.27,110.2,109.63,107.93,109.11,109.68,109.82,110.33,110.71,110.68,110.53,110.14,110.75,109.75,109.24,107.84,109.98,110.51,110.12,110.14,108.39,108.43,108.44,109.19,108.82,109.6,108.45,109.28,110.2,109.57,109.05,109.14,108.15,108.96,108.31,106.96,107.86,107.52,107.47,105.9,105.19,106.27,106.54,105.03,104.73,103.21,104.41,103.91,104.48,102.57,100.55,100.11,103.26,103.83,103.92,104.4,104.39,107.01,107.67,107.54,108.55,109.81,110.63,110.95,112.25,112,111.24,112.41,111.94,112.78,112.93,112.4,112.25,113.47,113.78,113.33,114.19,115.82,115.4,116.3,116.6,116.43,117.14,117.98,116.6]};
+let PRICE_INDEX = new Map(PRICE_DATES.map((d, i) => [d, i]));
+let LAST_PRICE_DATE = PRICE_DATES[PRICE_DATES.length - 1];
+
+// history.json (refreshed nightly by the GitHub Action) carries the daily series
+// forward beyond the values baked into this file. Without it, the chart can only
+// draw a straight line from the last baked date to today. We merge it in at boot,
+// before anything renders. Baked values are the fallback if the file is missing.
+async function loadPriceHistory() {
+  try {
+    const r = await fetch(`./history.json?ts=${Date.now()}`, { cache: "no-store" });
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!j || !Array.isArray(j.dates) || !j.prices) return;
+    // Only adopt it if it covers at least as much as the baked data; otherwise
+    // keep what we shipped with.
+    if (j.dates.length < PRICE_DATES.length) return;
+    for (const t of TICKERS) {
+      const arr = j.prices[t];
+      if (!Array.isArray(arr) || arr.length !== j.dates.length) return;
+    }
+    PRICE_DATES = j.dates;
+    PRICE_HISTORY = j.prices;
+    PRICE_INDEX = new Map(PRICE_DATES.map((d, i) => [d, i]));
+    LAST_PRICE_DATE = PRICE_DATES[PRICE_DATES.length - 1];
+  } catch (_) { /* keep baked-in history */ }
+}
+
+// Latest known close from the baked history. Used as the fallback when live fetch is blocked.
+function latestClose(ticker) {
+  const arr = PRICE_HISTORY[ticker];
+  return arr ? arr[arr.length - 1] : null;
+}
+
+// Resolve a price for (ticker, date). Live wins for today; otherwise use the
+// historical close on that date, or the most recent close on/before that date
+// if the date isn't in the series (e.g. weekends/holidays/transaction dates).
+function priceOn(ticker, date) {
+  const today = new Date().toISOString().slice(0,10);
+  if (date >= today && LIVE_PRICES?.[ticker]?.price != null) return LIVE_PRICES[ticker].price;
+  const idx = PRICE_INDEX.get(date);
+  if (idx != null) return PRICE_HISTORY[ticker][idx];
+  // Walk backward through the date list to find the most recent close on/before this date.
+  // Linear scan is fine; only used for the few transaction dates per kid.
+  for (let i = PRICE_DATES.length - 1; i >= 0; i--) {
+    if (PRICE_DATES[i] <= date) return PRICE_HISTORY[ticker][i];
+  }
+  return latestClose(ticker) ?? DATA.tickers[ticker]?.priceFallback;
+}
+
+// Today as "YYYY-MM-DD".
+function todayStr() { return new Date().toISOString().slice(0,10); }
+
+// A gift is recorded on its occasion — the birthday or the family's Christmas —
+// even when the shares were bought a few days early. Until that day arrives,
+// everything date-driven (the value chart, its gift markers, the growth rate,
+// badges) treats the gift as landing today, so an early purchase shows up right
+// away instead of staying invisible. On the occasion itself this is a no-op.
+// The stored date never changes; only the plotting does.
+function txDate(tx) {
+  const t = todayStr();
+  return tx.date > t ? t : tx.date;
+}
+
+// Compute a daily {date, cost, value} series for one kid, starting at their
+// first purchase and running through today.
+function dailySeries(kid) {
+  if (!kid.transactions.length) return [];
+  const txs = kid.transactions.slice().sort((a,b)=>txDate(a)<txDate(b)?-1:1);
+  const firstDate = txDate(txs[0]);
+  const startIdx = PRICE_DATES.findIndex(d => d >= firstDate);
+  if (startIdx < 0) return [];
+  const dates = PRICE_DATES.slice(startIdx);
+  const now = todayStr();
+  if (dates[dates.length - 1] < now) dates.push(now);
+
+  let txi = 0;
+  let cumCost = 0;
+  const held = {};
+  const series = [];
+  for (const d of dates) {
+    while (txi < txs.length && txDate(txs[txi]) <= d) {
+      const tx = txs[txi];
+      cumCost += tx.shares * tx.price;
+      held[tx.ticker] = (held[tx.ticker] || 0) + tx.shares;
+      txi++;
+    }
+    let value = 0;
+    for (const [t, sh] of Object.entries(held)) {
+      const px = priceOn(t, d);
+      if (px != null) value += sh * px;
+    }
+    series.push({ date: d, cost: cumCost, value });
+  }
+  return series;
+}
+
+// Turn the value line's one-day gift diagonal into a true vertical jump. On a
+// gift day dailySeries() already folds in the new shares, so the line ramps
+// from the previous close up to the post-gift value across one day, reading as
+// a steep angle. Here we splice in a "pre-gift" row at the SAME date valued at
+// only the previously held shares, so the line runs flat up to it and then
+// jumps straight up to the post-gift value. Between gifts the real daily market
+// wiggle is untouched.
+//
+// The pre-gift row carries the pre-gift COST too, so the value and cost-basis
+// datasets stay the same length and index-aligned (the chart's index-mode
+// tooltip pairs the two lines by position, not by date). Returns augmented
+// {date, value, cost} rows.
+function giftJumpSeries(kid, series) {
+  if (series.length < 2) return series;
+  // Value the newly gifted shares on the day their step actually plots (the
+  // first trading day on/after the gift date, matching giftMarkersFor()).
+  const addByPlotDate = {};
+  for (const tx of kid.transactions) {
+    const plotDate = PRICE_DATES.find(d => d >= txDate(tx)) || txDate(tx);
+    const px = priceOn(tx.ticker, plotDate);
+    if (px != null) addByPlotDate[plotDate] = (addByPlotDate[plotDate] || 0) + tx.shares * px;
+  }
+  const firstDate = series[0].date;
+  const out = [];
+  let prevCost = series[0].cost;
+  for (const s of series) {
+    const add = addByPlotDate[s.date];
+    // Skip the very first gift day: there are no prior holdings, so a pre-point
+    // would draw a vertical line up from $0 at the left edge (cost basis starts
+    // at the first gift too, so this keeps the two lines consistent).
+    if (add && s.date !== firstDate) {
+      out.push({ date: s.date, value: Math.max(0, s.value - add), cost: prevCost });
+    }
+    out.push({ date: s.date, value: s.value, cost: s.cost });
+    prevCost = s.cost;
+  }
+  return out;
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+const CAD = new Intl.NumberFormat("en-CA", { style:"currency", currency:"CAD", maximumFractionDigits: 2 });
+const CAD0 = new Intl.NumberFormat("en-CA", { style:"currency", currency:"CAD", maximumFractionDigits: 0 });
+
+// Multi-line x-axis tick: month on top, year on a second line for January
+// (and the first visible tick). Used by the time-axis charts.
+function monthYearTick(value, index) {
+  const d = new Date(value);
+  const m = d.toLocaleString("en-US", { month: "short" });
+  if (d.getMonth() === 0 || index === 0) return [m, String(d.getFullYear())];
+  return m;
+}
+const PCT = (n) => (n>=0 ? "+" : "") + (n*100).toFixed(1) + "%";
+
+function parseDate(s) { return new Date(s + "T12:00:00"); }
+function today() { return new Date(); }
+function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
+
+// How the owner signs the birthday email. Change it to your own name.
+function nameFor(kid) {
+  return "Alex";
+}
+
+function ageInYears(birthDate, asOf = today()) {
+  const b = parseDate(birthDate);
+  let years = asOf.getFullYear() - b.getFullYear();
+  const m = asOf.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && asOf.getDate() < b.getDate())) years--;
+  return years;
+}
+
+// "YYYY-MM-DD" for a local Date, without the UTC shift toISOString() adds.
+function ymdLocal(dt) {
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const d = String(dt.getDate()).padStart(2, "0");
+  return `${dt.getFullYear()}-${m}-${d}`;
+}
+
+// Has this kid's gift for this occasion already been bought? Gifts are stored
+// on their occasion date, so a matching transaction means the shares are in
+// hand — even when they were bought a few days early.
+function giftGivenOn(kid, dt) {
+  const key = ymdLocal(dt);
+  return kid.transactions.some(t => t.date === key);
+}
+
+// The next occasion this kid still has a gift coming on. Skips occasions
+// already bought ahead of time and occasions past the 18th birthday (the
+// handoff, which is the last gift). Returns null once the gifts are done.
+function nextGiftDate(kid, asOf = today()) {
+  const startOfToday = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate());
+  const todayKey = ymdLocal(startOfToday);
+  const eighteen = eighteenthBirthday(kid);
+  const candidates = [];
+  // Two years of occasions is plenty: even with both of this year's gifts
+  // already bought, the next one falls inside next year.
+  for (let y = asOf.getFullYear(); y <= asOf.getFullYear() + 2; y++) {
+    for (const mmdd of kid.giftDays) {
+      const [m, d] = mmdd.split("-").map(Number);
+      const dt = new Date(y, m - 1, d, 12);
+      if (dt < startOfToday) continue;
+      if (dt > eighteen) continue;
+      // An occasion happening today still counts, even though its gift is
+      // already recorded — today is the day it arrives.
+      if (ymdLocal(dt) !== todayKey && giftGivenOn(kid, dt)) continue;
+      candidates.push(dt);
+    }
+  }
+  candidates.sort((a,b)=>a-b);
+  return candidates[0] || null;
+}
+
+function eighteenthBirthday(kid) {
+  const b = parseDate(kid.birthDate);
+  return new Date(b.getFullYear()+18, b.getMonth(), b.getDate(), 12);
+}
+
+// ============================================================
+// HANDOFF COUNTDOWN
+// Live countdown to the next 18th birthday. Under 60 days out we
+// add hours so the number visibly moves; above that, days only.
+// ============================================================
+let NEXT_HANDOFF = null;   // { kid, date } for the home stat
+let CURRENT_KID = null;    // kid shown on the kid page, for its countdown
+
+function countdownText(target, now = new Date()) {
+  const ms = Math.max(0, target - now);
+  const days = Math.floor(ms / 86400000);
+  if (days >= 60) return days.toLocaleString("en-CA") + " days";
+  const hours = Math.floor((ms % 86400000) / 3600000);
+  return `${days} day${days === 1 ? "" : "s"} ${hours} hr${hours === 1 ? "" : "s"}`;
+}
+
+// Refresh every countdown currently on screen. Runs once a minute; cheap
+// because it only touches text nodes, never re-renders charts.
+function updateCountdowns() {
+  if (document.body.classList.contains("route-home") && NEXT_HANDOFF) {
+    const el = document.getElementById("hNextHandoff");
+    if (el) el.textContent = countdownText(NEXT_HANDOFF.date);
+  }
+  if (document.body.classList.contains("route-kid") && CURRENT_KID) {
+    const el = document.getElementById("kidHandoffCountdown");
+    if (el) el.textContent = countdownText(eighteenthBirthday(CURRENT_KID));
+  }
+}
+setInterval(updateCountdowns, 60000);
+
+// ============================================================
+// COUNT-UP + CONFETTI
+// Big dollar stats count up from 0 on render; a lightweight canvas
+// confetti burst marks birthdays, gift days, and new badges.
+// Both respect prefers-reduced-motion.
+// ============================================================
+function prefersReducedMotion() {
+  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+// Animate el's text from $0 to the target over ~0.8s (ease-out cubic).
+function countUp(el, target, fmt = (v) => CAD.format(v), duration = 800) {
+  if (!el) return;
+  if (el.__countupRaf) { cancelAnimationFrame(el.__countupRaf); el.__countupRaf = null; }
+  if (prefersReducedMotion() || !isFinite(target)) { el.textContent = fmt(target); return; }
+  const t0 = performance.now();
+  const tick = (t) => {
+    const p = Math.min(1, (t - t0) / duration);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt(target * eased);
+    if (p < 1) el.__countupRaf = requestAnimationFrame(tick);
+    else { el.__countupRaf = null; el.textContent = fmt(target); }
+  };
+  el.__countupRaf = requestAnimationFrame(tick);
+}
+
+// Vanilla-canvas confetti burst: ~90 rectangles, gravity + spin, gone in ~1.8s.
+function fireConfetti(colors) {
+  if (prefersReducedMotion()) return;
+  const canvas = document.createElement("canvas");
+  canvas.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:200;";
+  document.body.appendChild(canvas);
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = innerWidth * dpr;
+  canvas.height = innerHeight * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  const palette = colors || ["#5eead4", "#f5b840", "#4ade80", "#60a5fa", "#a78bfa", "#f472b6"];
+  const cx = innerWidth / 2;
+  const cy = Math.min(innerHeight * 0.3, 260);
+  const parts = [];
+  for (let i = 0; i < 90; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const sp = 4 + Math.random() * 7;
+    parts.push({
+      x: cx, y: cy,
+      vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - 3,
+      w: 5 + Math.random() * 5, h: 8 + Math.random() * 6,
+      rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3,
+      color: palette[i % palette.length],
+    });
+  }
+  const t0 = performance.now();
+  const dur = 1800;
+  function tick(t) {
+    const el = t - t0;
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    const fade = Math.max(0, 1 - el / dur);
+    for (const p of parts) {
+      p.vy += 0.12; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      ctx.save();
+      ctx.globalAlpha = fade;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    if (el < dur) requestAnimationFrame(tick);
+    else canvas.remove();
+  }
+  requestAnimationFrame(tick);
+}
+
+function holdingsFor(kid, prices) {
+  // Aggregate by ticker
+  const map = new Map();
+  for (const tx of kid.transactions) {
+    const cur = map.get(tx.ticker) || { ticker: tx.ticker, shares: 0, cost: 0 };
+    cur.shares += tx.shares;
+    cur.cost += tx.shares * tx.price;
+    map.set(tx.ticker, cur);
+  }
+  let value = 0, cost = 0;
+  const rows = [...map.values()].map(h => {
+    const px = prices?.[h.ticker]?.price ?? latestClose(h.ticker) ?? DATA.tickers[h.ticker].priceFallback;
+    const v = h.shares * px;
+    value += v; cost += h.cost;
+    return { ...h, price: px, value: v, gain: v - h.cost, gainPct: h.cost > 0 ? (v - h.cost) / h.cost : 0 };
+  });
+  return { rows, value, cost, gain: value - cost, gainPct: cost > 0 ? (value - cost) / cost : 0 };
+}
+
+// totalsByDate is kept as a thin wrapper around dailySeries for backwards compat.
+function totalsByDate(kid /*, prices */) {
+  return dailySeries(kid);
+}
+
+// ============================================================
+// XIRR: annualized money-weighted return for irregular cash flows.
+// Treats each gift as a negative cash flow on its purchase date, and
+// today's portfolio value as a single positive cash flow. Returns the
+// annual rate r that makes the present value of all flows = 0.
+// Newton's method, same algorithm as Excel/Google Sheets XIRR().
+// ============================================================
+function xirr(cashflows, guess = 0.1) {
+  if (!cashflows || cashflows.length < 2) return null;
+  const sorted = cashflows
+    .map(c => ({
+      date: (c.date instanceof Date) ? c.date : new Date(c.date + "T12:00:00"),
+      amount: c.amount,
+    }))
+    .sort((a, b) => a.date - b.date);
+  const hasNeg = sorted.some(c => c.amount < 0);
+  const hasPos = sorted.some(c => c.amount > 0);
+  if (!hasNeg || !hasPos) return null;
+  const d0 = sorted[0].date.getTime();
+  const years = sorted.map(c => (c.date.getTime() - d0) / (365 * 86400000));
+  const amts = sorted.map(c => c.amount);
+
+  let r = guess;
+  for (let iter = 0; iter < 200; iter++) {
+    let f = 0, fp = 0;
+    let bad = false;
+    for (let i = 0; i < amts.length; i++) {
+      const t = years[i];
+      const base = 1 + r;
+      if (base <= 0) { bad = true; break; }
+      const disc = Math.pow(base, -t);
+      f += amts[i] * disc;
+      fp += amts[i] * (-t) * disc / base;
+    }
+    if (bad) { r = -0.5; continue; }
+    if (!isFinite(f) || !isFinite(fp) || Math.abs(fp) < 1e-12) return null;
+    let next = r - f / fp;
+    if (next <= -0.999) next = (r - 0.999) / 2;
+    if (Math.abs(next - r) < 1e-9) return next;
+    r = next;
+  }
+  return r;
+}
+
+// Build XIRR cash flows for one kid: each transaction is a negative,
+// today's market value of held shares is the positive terminal flow.
+function xirrForKid(kid, prices) {
+  if (!kid.transactions || !kid.transactions.length) return null;
+  const cfs = kid.transactions.map(tx => ({
+    date: txDate(tx),
+    amount: -(tx.shares * tx.price),
+  }));
+  const h = holdingsFor(kid, prices);
+  if (h.value <= 0) return null;
+  cfs.push({ date: new Date(), amount: h.value });
+  return xirr(cfs);
+}
+
+// Portfolio-wide XIRR across every kid (treats all gifts as one pile).
+function xirrForAll(prices) {
+  const cfs = [];
+  let totalValue = 0;
+  for (const k of DATA.kids) {
+    for (const tx of k.transactions) {
+      cfs.push({ date: txDate(tx), amount: -(tx.shares * tx.price) });
+    }
+    totalValue += holdingsFor(k, prices).value;
+  }
+  if (!cfs.length || totalValue <= 0) return null;
+  cfs.push({ date: new Date(), amount: totalValue });
+  return xirr(cfs);
+}
+
+// Friendly one-line caption for a yearly-growth rate.
+function xirrCaption(r) {
+  if (r == null || !isFinite(r)) return "Need a bit more time to calculate";
+  const pct = r * 100;
+  if (pct >= 20) return "Wild. Markets won’t always be this generous";
+  if (pct >= 10) return "Healthy growth, beating the long-term average";
+  if (pct >= 5)  return "Around the long-term S&P 500 average";
+  if (pct >= 0)  return "Growing slowly, normal during quiet years";
+  return "Down a bit. Totally normal, markets bounce";
+}
+
+// ============================================================
+// LIVE PRICE FETCHING
+// ============================================================
+const TICKERS = Object.keys(DATA.tickers);
+let LIVE_PRICES = null; // { "XUS.TO": { price, asOf } }
+
+async function fetchLivePrices() {
+  const results = {};
+
+  // First, try the same-origin prices.json sidecar (refreshed nightly by the
+  // GitHub Action at .github/workflows/refresh-prices.yml). No CORS issues here.
+  try {
+    const r = await fetch(`./prices.json?ts=${Date.now()}`, { cache: "no-store" });
+    if (r.ok) {
+      const j = await r.json();
+      if (j && j.prices) {
+        for (const t of TICKERS) {
+          const p = j.prices[t];
+          if (p && typeof p.price === "number") {
+            results[t] = { price: p.price, asOf: p.asOf ? new Date(p.asOf) : null };
+          }
+        }
+        if (Object.keys(results).length === TICKERS.length) {
+          LIVE_PRICES = results;
+          return results;
+        }
+      }
+    }
+  } catch (_) { /* fall through to Yahoo */ }
+
+  // Fallback: try Yahoo v8 chart endpoint per ticker (range=1d).
+  // Browsers running this page get CORS for many users on this endpoint; fallback gracefully if blocked.
+  await Promise.all(TICKERS.map(async (t) => {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?range=1d&interval=1d`;
+      const r = await fetch(url);
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      const meta = j?.chart?.result?.[0]?.meta;
+      if (!meta?.regularMarketPrice) throw new Error("no price");
+      results[t] = { price: meta.regularMarketPrice, asOf: new Date(meta.regularMarketTime * 1000) };
+    } catch (e) {
+      results[t] = { price: DATA.tickers[t].priceFallback, asOf: null, error: e.message };
+    }
+  }));
+
+  LIVE_PRICES = results;
+  return results;
+}
+
+// ============================================================
+// LEADERBOARD (home)
+// ============================================================
+let SORT_KEY = "age";
+let GROUP_FILTER = "all";
+
+// ============================================================
+// HOME STATS: AUM, total invested, gain, paid-out (DPI), next handoff
+// ============================================================
+function renderHomeStats() {
+  // Across ALL kids; the home totals are global, not filtered.
+  let aum = 0, invested = 0, paidOut = 0, handoffs = 0;
+  const now = today();
+
+  for (const k of DATA.kids) {
+    const h = holdingsFor(k, LIVE_PRICES);
+    aum += h.value;
+    invested += h.cost;
+    // Handoff happens at the 18th birthday: portfolio is sold, value is e-transferred.
+    if (eighteenthBirthday(k) <= now) {
+      // For kids who have already received their handoff, treat current AUM
+      // as the realized distribution. (In reality we'd store the actual payout
+      // amount; until any kid hits 18, this branch never fires.)
+      paidOut += h.value;
+      handoffs += 1;
+    }
+  }
+  const dpi = invested > 0 ? paidOut / invested : 0;
+
+  // Next handoff = kid with the soonest 18th birthday that's still in the future.
+  let nextKid = null, nextDate = null;
+  for (const k of DATA.kids) {
+    const eb = eighteenthBirthday(k);
+    if (eb > now && (!nextDate || eb < nextDate)) { nextKid = k; nextDate = eb; }
+  }
+
+  countUp(document.getElementById("hAum"), aum);
+  document.getElementById("hAumSub").textContent = `Across ${DATA.kids.length} portfolios · live prices`;
+
+  countUp(document.getElementById("hInvested"), invested);
+  // (sub stays as the static helper text; no change needed.)
+
+  // Portfolio-wide XIRR (yearly growth): accounts for when every gift was made.
+  const allXirr = xirrForAll(LIVE_PRICES);
+  const hXirrEl = document.getElementById("hXirr");
+  const hXirrSubEl = document.getElementById("hXirrSub");
+  if (allXirr == null || !isFinite(allXirr)) {
+    hXirrEl.textContent = "–";
+    hXirrEl.style.color = "var(--ink)";
+    hXirrSubEl.textContent = "Need a bit more time to calculate";
+  } else {
+    hXirrEl.textContent = PCT(allXirr);
+    hXirrEl.style.color = allXirr >= 0 ? "var(--green, #15803d)" : "var(--red, #b91c1c)";
+    hXirrSubEl.textContent = xirrCaption(allXirr);
+  }
+
+  countUp(document.getElementById("hPaidOut"), paidOut);
+  const dpiStr = dpi.toFixed(2) + "×";
+  document.getElementById("hPaidOutSub").textContent =
+    handoffs === 0
+      ? `0 handoffs yet · DPI ${dpiStr}`
+      : `${handoffs} handoff${handoffs === 1 ? "" : "s"} · DPI ${dpiStr}`;
+
+  // Label is "First handoff" until any kid has been paid out; after that it's "Next handoff".
+  document.getElementById("hNextHandoffLabel").textContent =
+    handoffs === 0 ? "First handoff" : "Next handoff";
+
+  if (nextKid && nextDate) {
+    NEXT_HANDOFF = { kid: nextKid, date: nextDate };
+    document.getElementById("hNextHandoff").textContent = countdownText(nextDate);
+    const dateStr = nextDate.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
+    document.getElementById("hNextHandoffSub").textContent = `${nextKid.name} turns 18 on ${dateStr}`;
+  } else {
+    NEXT_HANDOFF = null;
+    document.getElementById("hNextHandoff").textContent = "All done";
+    document.getElementById("hNextHandoffSub").textContent = "Every portfolio has been handed off";
+  }
+}
+
+function renderLeaderboard() {
+  const wrap = document.getElementById("leaderboard");
+  wrap.innerHTML = "";
+
+  // Group lookup for badge styling.
+  const fallback = [
+    { id:"cousins", label:"Cousin",       accent:"#E11D48", accentSoft:"#FFE4E6" },
+    { id:"friends", label:"Friend's kid", accent:"#0EA5E9", accentSoft:"#E0F2FE" }
+  ];
+  const groupList = (DATA.groups && DATA.groups.length) ? DATA.groups : fallback;
+  const groupById = Object.fromEntries(groupList.map(g => [g.id, g]));
+
+  // Compute rows.
+  let rows = DATA.kids.map(k => {
+    const h = holdingsFor(k, LIVE_PRICES);
+    const next = nextGiftDate(k);
+    const days = next ? Math.max(0, daysBetween(today(), next)) : null;
+    const xirrRate = xirrForKid(k, LIVE_PRICES);
+    return {
+      k, ...h,
+      age: ageInYears(k.birthDate),
+      nextDays: days, nextDate: next,
+      xirr: xirrRate,
+    };
+  });
+
+  // Filter by relationship group (set via the filter pills above the leaderboard).
+  if (GROUP_FILTER && GROUP_FILTER !== "all") {
+    rows = rows.filter(r => (r.k.group || "cousins") === GROUP_FILTER);
+  }
+
+  // Sort.
+  rows.sort((a,b) => {
+    if (SORT_KEY === "value") return b.value - a.value;
+    if (SORT_KEY === "gainPct") return b.gainPct - a.gainPct;
+    if (SORT_KEY === "xirr")    return (b.xirr ?? -Infinity) - (a.xirr ?? -Infinity);
+    // Compare birthdates, not whole years, so kids the same age still sort oldest first.
+    if (SORT_KEY === "age") return a.k.birthDate.localeCompare(b.k.birthDate);
+    // Kids with no gift left sort to the bottom of the "next gift" sort.
+    if (SORT_KEY === "next") return (a.nextDays ?? Infinity) - (b.nextDays ?? Infinity);
+    return 0;
+  });
+
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.style.cssText = "padding:24px; color:var(--muted); text-align:center; grid-column:1/-1;";
+    empty.textContent = "No portfolios match this filter.";
+    wrap.appendChild(empty);
+    return;
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const rank = i + 1;
+    const g = groupById[r.k.group] || fallback[1];
+    const a = document.createElement("a");
+    a.className = "kid-card";
+    a.href = `#/name/${r.k.id}`;
+    a.style.setProperty("--kid-color", r.k.color);
+    a.style.setProperty("--kid-color-soft", r.k.color + "22");
+    const deltaCls = r.gain > 0 ? "up" : (r.gain < 0 ? "down" : "flat");
+    const deltaArrow = r.gain > 0 ? "▲" : (r.gain < 0 ? "▼" : "·");
+    const badgeText = r.k.groupLabel || g.label;
+    const badgeStyle = `--badge-soft:${g.accentSoft}; --badge-ink:${g.accent};`;
+    // Yearly growth (XIRR) may be null if just one gift, very recent, etc.
+    let growthBlock = "";
+    if (r.xirr != null && isFinite(r.xirr)) {
+      const growCls = r.xirr > 0 ? "up" : (r.xirr < 0 ? "down" : "flat");
+      growthBlock = `
+        <div class="growth-row" title="Yearly growth (XIRR): accounts for when each gift arrived.">
+          <span class="grow-label">Yearly growth</span>
+          <span class="grow-val ${growCls}">${PCT(r.xirr)}</span>
+          <span class="grow-sub">per year, on average</span>
+        </div>`;
+    } else {
+      growthBlock = `
+        <div class="growth-row">
+          <span class="grow-label">Yearly growth</span>
+          <span class="grow-sub">Coming soon, need a bit more time</span>
+        </div>`;
+    }
+    a.innerHTML = `
+      <span class="rank" aria-label="Rank ${rank}">${rank}</span>
+      <span class="badge" style="${badgeStyle}">${badgeText}</span>
+      <div class="row1">
+        <div class="emoji">${r.k.emoji}</div>
+        <div>
+          <div class="name">${r.k.name}</div>
+          <div class="age">${r.age === 0 ? "Less than 1 yr old" : r.age + " yrs old"} · ${r.nextDays === null ? "all gifts given" : `next gift in ${r.nextDays} days`}</div>
+        </div>
+      </div>
+      <div class="value">${CAD.format(r.value)}</div>
+      <div class="meta">
+        <span><b>${CAD.format(r.cost)}</b> invested</span>
+      </div>
+      ${growthBlock}
+    `;
+    wrap.appendChild(a);
+  }
+}
+
+// Chart.js global defaults for the SpaceX dark skin
+if (typeof Chart !== "undefined") {
+  Chart.defaults.color = "#b8b8b8";
+  Chart.defaults.borderColor = "#1f1f1f";
+  Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif';
+}
+
+let COMBINED_CHART = null;
+
+// Custom tooltip for the combined chart: instead of one big boxed legend, each
+// kid's "Name: $value" floats next to their own line at the hovered date. Labels
+// are nudged vertically (jittered) so they never overlap, and the date is shown
+// once as a header pinned to the top.
+function combinedTooltip(context) {
+  const { chart, tooltip } = context;
+  let el = chart.canvas.parentNode.querySelector(".combined-tip");
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "combined-tip";
+    chart.canvas.parentNode.appendChild(el);
+  }
+  if (tooltip.opacity === 0) { el.style.opacity = 0; return; }
+
+  const dps = (tooltip.dataPoints || []).filter(dp => dp.element);
+  if (!dps.length) { el.style.opacity = 0; return; }
+
+  const area = chart.chartArea;
+  const caretX = tooltip.caretX;
+  // Place labels on whichever side of the cursor has more room.
+  const side = caretX > (area.left + area.right) / 2 ? "left" : "right";
+  const labelX = side === "left" ? caretX - 10 : caretX + 10;
+
+  // Resolve vertical overlaps: keep each label as close to its line as possible
+  // while enforcing a minimum gap between adjacent labels.
+  const gap = 18;
+  const rows = dps.map(dp => ({
+    y: dp.element.y,
+    color: dp.dataset.borderColor,
+    text: dp.dataset.label + ": " + CAD0.format(dp.parsed.y)
+  })).sort((a, b) => a.y - b.y);
+
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i].y < rows[i - 1].y + gap) rows[i].y = rows[i - 1].y + gap;
+  }
+  // If the stack ran past the bottom, shift it up and re-space upward.
+  const overflow = rows[rows.length - 1].y - area.bottom;
+  if (overflow > 0) {
+    for (const r of rows) r.y -= overflow;
+    for (let i = rows.length - 2; i >= 0; i--) {
+      if (rows[i].y > rows[i + 1].y - gap) rows[i].y = rows[i + 1].y - gap;
+    }
+  }
+  // Keep the top label inside the chart.
+  if (rows[0].y < area.top + 16) {
+    const shift = area.top + 16 - rows[0].y;
+    for (const r of rows) r.y += shift;
+  }
+
+  let html = '<div class="tip-date" style="left:' + caretX + 'px;top:' +
+    (area.top - 2) + 'px">' +
+    new Date(tooltip.dataPoints[0].parsed.x).toLocaleDateString("en-US",
+      { month: "short", day: "numeric", year: "numeric" }) + "</div>";
+  for (const r of rows) {
+    html += '<div class="tip-row ' + side + '" style="left:' + labelX + "px;top:" + r.y +
+      "px;transform:translateY(-50%)" + (side === "left" ? " translateX(-100%)" : "") + '">' +
+      '<span class="tip-dot" style="background:' + r.color + '"></span>' +
+      '<span>' + r.text + "</span></div>";
+  }
+  el.innerHTML = html;
+  el.style.opacity = 1;
+}
+
+// ============================================================
+// GIFT MARKERS (per-kid value-over-time chart)
+// A vertical line on each birthday/Christmas gift date. Hovering near a line
+// shows a card titled with the gift (e.g. "Christmas 2024" or "6th Birthday")
+// and what was bought (ticker, shares, and cost basis).
+// ============================================================
+// Themed emoji pools: festive ones for Christmas, party ones for birthdays.
+const XMAS_EMOJI = ["🎄", "🎅", "🎁", "⛄", "🌟", "❄️", "🔔", "🦌"];
+const BDAY_EMOJI = ["🎁", "🎉", "🎂", "🥳", "🎈", "🎊", "🎀", "✨"];
+// Pick from the right pool, seeded by the gift date so each gift keeps the same
+// emoji across re-renders and reloads (varied, but not flickering on every draw).
+function giftEmoji(tx) {
+  const pool = /christmas/i.test(tx.event) ? XMAS_EMOJI : BDAY_EMOJI;
+  let h = 0;
+  for (const c of tx.date) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return pool[h % pool.length];
+}
+
+function giftMarkersFor(kid) {
+  return kid.transactions.slice().sort((a, b) => txDate(a) < txDate(b) ? -1 : 1).map(tx => ({
+    date: tx.date,
+    // Snap the line to the first trading day on/after the gift date: that's where
+    // dailySeries() applies the cost/value step, so the line meets the jump even
+    // when the gift falls on a market holiday (e.g. Christmas) or weekend.
+    plotDate: PRICE_DATES.find(d => d >= txDate(tx)) || txDate(tx),
+    emoji: giftEmoji(tx),
+    title: /christmas/i.test(tx.event) ? `${tx.event} ${tx.date.slice(0, 4)}` : tx.event,
+    ticker: tx.ticker,
+    shares: tx.shares,
+    price: tx.price,
+    cost: tx.shares * tx.price,
+  }));
+}
+
+// Chart.js plugin: draws the vertical lines + a 🎁 at the top, and records each
+// line's pixel x on chart.$giftHit so the hover handler can do proximity tests.
+const giftMarkersPlugin = {
+  id: "giftMarkers",
+  afterDatasetsDraw(chart) {
+    const gifts = chart.$gifts;
+    if (!gifts || !gifts.length) return;
+    const { ctx, chartArea: area, scales: { x } } = chart;
+    chart.$giftHit = [];
+    ctx.save();
+    gifts.forEach(g => {
+      const px = x.getPixelForValue(new Date(g.plotDate + "T12:00").getTime());
+      if (px < area.left - 1 || px > area.right + 1) return;
+      const active = chart.$giftHover === g.date;
+      ctx.beginPath();
+      ctx.moveTo(px, area.top);
+      ctx.lineTo(px, area.bottom - 9);
+      ctx.lineWidth = active ? 1.6 : 1;
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = active ? "rgba(245,184,64,0.95)" : "rgba(245,184,64,0.30)";
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // gift marker sits just above the x-axis
+      ctx.font = (active ? 15 : 13) + "px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText(g.emoji, px, area.bottom - 1);
+      chart.$giftHit.push({ px, gift: g });
+    });
+    ctx.restore();
+  }
+};
+
+// Show/hide the floating gift card. Pass null to hide.
+function showGiftTip(chart, hit) {
+  let el = chart.canvas.parentNode.querySelector(".gift-tip");
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "gift-tip";
+    chart.canvas.parentNode.appendChild(el);
+  }
+  if (!hit) { el.style.opacity = 0; return; }
+  const g = hit.gift;
+  const shares = g.shares + (g.shares === 1 ? " share" : " shares");
+  // For multi-share gifts show the per-share price (the total differs); for a
+  // single share the per-share price equals the total, so don't repeat it.
+  const line = g.shares === 1
+    ? shares + " of " + g.ticker.replace(".TO", "")
+    : shares + " of " + g.ticker.replace(".TO", "") + " @ " + CAD.format(g.price);
+  el.innerHTML =
+    '<div class="gt-title">' + g.emoji + ' ' + g.title + '</div>' +
+    '<div class="gt-line">' + line + '</div>' +
+    '<div class="gt-cost">' + CAD.format(g.cost) + ' invested</div>';
+  // Default: card sits centered above the marker line, near the top.
+  const area = chart.chartArea;
+  el.style.transform = "translateX(-50%)";
+  const cw = el.offsetWidth || 180;
+  const ch = el.offsetHeight || 72;
+  let left = Math.max(area.left + cw / 2 + 2, Math.min(hit.px, area.right - cw / 2 - 2));
+  let top = area.top + 8;
+  // Only repel when it would actually collide with the native value tooltip (which
+  // happens at the last, highest-value gift, where the tooltip rides up near the top):
+  // nudge the card straight down to clear it.
+  const tip = chart.tooltip;
+  if (tip && tip.opacity > 0 && tip.width) {
+    const cL = left - cw / 2, cR = left + cw / 2, cT = top, cB = top + ch;
+    const tL = tip.x, tR = tip.x + tip.width, tT = tip.y, tB = tip.y + tip.height;
+    if (cL < tR + 6 && cR > tL - 6 && cT < tB + 6 && cB > tT - 6) {
+      top = tB + 8;
+      if (top + ch > area.bottom) top = Math.max(area.top + 4, tT - ch - 8);
+    }
+  }
+  el.style.left = left + "px";
+  el.style.top = top + "px";
+  el.style.opacity = 1;
+}
+
+// Hover handler shared by the per-kid chart: highlight + card for the nearest
+// gift line within a few pixels of the cursor.
+function giftMarkersOnHover(evt, _active, chart) {
+  const hits = chart.$giftHit || [];
+  let best = null, bestD = 9;
+  if (evt.type !== "mouseout") {
+    for (const h of hits) {
+      const d = Math.abs(h.px - evt.x);
+      if (d < bestD) { bestD = d; best = h; }
+    }
+  }
+  const newHover = best ? best.gift.date : null;
+  if (newHover !== chart.$giftHover) {
+    chart.$giftHover = newHover;
+    chart.render();
+  }
+  showGiftTip(chart, best);
+}
+
+// ============================================================
+// TIME-RANGE TOGGLES (Google-style: 1W / 1M / 6M / 1Y / All)
+// Data is daily closes, so the shortest useful window is a week.
+// ============================================================
+const RANGE_DEFS = [
+  { key: "1W",  label: "1W",  months: 0,  days: 7,  unit: "day" },
+  { key: "1M",  label: "1M",  months: 1,  days: 0,  unit: "day" },
+  { key: "6M",  label: "6M",  months: 6,  days: 0,  unit: "month" },
+  { key: "1Y",  label: "1Y",  months: 12, days: 0,  unit: "month" },
+  { key: "ALL", label: "All", months: 0,  days: 0,  unit: "month" },
+];
+
+function rangeCutoff(def) {
+  const d = new Date();
+  if (def.days) d.setDate(d.getDate() - def.days);
+  if (def.months) d.setMonth(d.getMonth() - def.months);
+  return d.toISOString().slice(0, 10);
+}
+
+// Day-level x-axis tick (e.g. "Jun 12"), used for the 1W / 1M windows.
+function dayTick(value) {
+  return new Date(value).toLocaleString("en-US", { month: "short", day: "numeric" });
+}
+
+// Apply a range key to a chart: clamp the x-axis and, for zoomed-in windows,
+// rescale the y-axis to the visible data so variation is actually visible.
+function applyChartRange(chart, key) {
+  if (!chart) return;
+  chart._range = key;
+  const def = RANGE_DEFS.find(r => r.key === key) || RANGE_DEFS[RANGE_DEFS.length - 1];
+  const x = chart.options.scales.x;
+  const y = chart.options.scales.y;
+
+  if (def.key === "ALL") {
+    x.min = chart._fullMin;
+    x.time.unit = "month";
+    x.ticks.callback = monthYearTick;
+    y.min = undefined; y.max = undefined; y.beginAtZero = true;
+    chart.update();
+    return;
+  }
+
+  const cutoff = rangeCutoff(def);
+  // Don't zoom past the start of the data.
+  x.min = (chart._fullMin && cutoff < chart._fullMin) ? chart._fullMin : cutoff;
+  x.time.unit = def.unit;
+  x.ticks.callback = def.unit === "day" ? dayTick : monthYearTick;
+
+  let lo = Infinity, hi = -Infinity;
+  chart.data.datasets.forEach((ds, i) => {
+    if (!chart.isDatasetVisible(i)) return;
+    ds.data.forEach(pt => {
+      if (pt.x >= x.min && pt.y != null) {
+        if (pt.y < lo) lo = pt.y;
+        if (pt.y > hi) hi = pt.y;
+      }
+    });
+  });
+  if (lo === Infinity) { y.min = undefined; y.max = undefined; y.beginAtZero = true; }
+  else {
+    const pad = (hi - lo) * 0.12 || hi * 0.05 || 1;
+    y.beginAtZero = false;
+    y.min = Math.max(0, lo - pad);
+    y.max = hi + pad;
+  }
+  chart.update();
+}
+
+// Build (once) the toggle buttons for a chart and wire them up.
+// Default selection is "All". Re-rendering a chart re-runs this so the
+// active button reflects the chart's current range.
+function setupChartRange(containerId, getChart) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  const chart = getChart();
+  const current = (chart && chart._range) || "ALL";
+  wrap.innerHTML = "";
+  RANGE_DEFS.forEach(def => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = def.label;
+    btn.dataset.key = def.key;
+    if (def.key === current) btn.classList.add("active");
+    btn.addEventListener("click", () => {
+      const c = getChart();
+      if (!c) return;
+      applyChartRange(c, def.key);
+      wrap.querySelectorAll("button").forEach(b => b.classList.toggle("active", b === btn));
+    });
+    wrap.appendChild(btn);
+  });
+  // Make sure the chart reflects the active range on (re)build.
+  if (chart) applyChartRange(chart, current);
+}
+
+function renderCombinedChart() {
+  const ctx = document.getElementById("combinedChart").getContext("2d");
+
+  // For each kid, plot a daily value series from their first purchase onward.
+  // Each point is the actual market value of their holdings on that day.
+  const datasets = [];
+  let earliestDate = null;
+  const kidsForChart = (GROUP_FILTER && GROUP_FILTER !== "all")
+    ? DATA.kids.filter(k => (k.group || "cousins") === GROUP_FILTER)
+    : DATA.kids;
+  kidsForChart.forEach(k => {
+    const series = dailySeries(k);
+    if (!series.length) return;
+    if (!earliestDate || series[0].date < earliestDate) earliestDate = series[0].date;
+    datasets.push({
+      label: k.name,
+      data: series.map(s => ({ x: s.date, y: s.value })),
+      borderColor: k.color,
+      backgroundColor: k.color + "11",
+      tension: 0.15,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      borderWidth: 2,
+      spanGaps: true,
+    });
+  });
+  const combinedXMin = earliestDate ? earliestDate.slice(0, 7) + "-01" : undefined;
+
+  // Remember the selected range across re-renders (e.g. group-filter changes).
+  const prevRange = COMBINED_CHART ? COMBINED_CHART._range : "ALL";
+  if (COMBINED_CHART) COMBINED_CHART.destroy();
+  COMBINED_CHART = new Chart(ctx, {
+    type: "line",
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "nearest", axis: "x", intersect: false },
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            boxWidth: 10, boxHeight: 10, font: { size: 11 },
+            // Order legend entries by age, oldest first. Doesn't change the
+            // dataset order (so line z-ordering / colors stay put), just the
+            // visual order of the chips below the chart.
+            sort: (a, b) => {
+              const kidA = DATA.kids.find(k => k.name === a.text);
+              const kidB = DATA.kids.find(k => k.name === b.text);
+              if (!kidA || !kidB) return 0;
+              return kidA.birthDate.localeCompare(kidB.birthDate);
+            }
+          },
+          // Custom click behavior:
+          //  - Click a name when all (or many) are visible → isolate to just that one
+          //  - Click a hidden name → add it back into the visible set
+          //  - Click the only-visible name → show everyone again
+          onClick: (e, legendItem, legend) => {
+            const chart = legend.chart;
+            const idx = legendItem.datasetIndex;
+            const total = chart.data.datasets.length;
+            const visibleIndexes = [];
+            for (let i = 0; i < total; i++) {
+              if (chart.isDatasetVisible(i)) visibleIndexes.push(i);
+            }
+            const isVisible = visibleIndexes.includes(idx);
+            const onlyThisVisible = isVisible && visibleIndexes.length === 1;
+
+            if (onlyThisVisible) {
+              // Reset: show everyone again
+              for (let i = 0; i < total; i++) chart.setDatasetVisibility(i, true);
+            } else if (isVisible) {
+              // Isolate to just this one
+              for (let i = 0; i < total; i++) chart.setDatasetVisibility(i, i === idx);
+            } else {
+              // Add this dataset back into the visible set
+              chart.setDatasetVisibility(idx, true);
+            }
+            // Re-apply the active range so the y-axis rescales to whoever's
+            // now visible (matters for zoomed-in windows).
+            applyChartRange(chart, chart._range || "ALL");
+          }
+        },
+        tooltip: {
+          // Default boxed tooltip is replaced by a custom external handler that
+          // floats each kid's label next to their own line (see combinedTooltip).
+          enabled: false,
+          external: combinedTooltip,
+          // When the cursor lands between two adjacent daily points, Chart.js's
+          // nearest-axis-x mode can tie both, yielding two entries per kid in the
+          // tooltip with neighboring days' values. Keep the first entry per dataset
+          // so each kid shows exactly once.
+          filter: (item, index, items) => items.findIndex(it => it.datasetIndex === item.datasetIndex) === index,
+          // Sort entries by portfolio value at the hovered date, highest first.
+          itemSort: (a, b) => b.parsed.y - a.parsed.y
+        }
+      },
+      scales: {
+        x: {
+          type: "time",
+          time: { unit: "month" },
+          min: combinedXMin,
+          ticks: { callback: monthYearTick, maxRotation: 0, autoSkip: true },
+          grid: { display: false }
+        },
+        y: { beginAtZero: true, ticks: { callback: v => CAD0.format(v) }, grid: { color: "rgba(255,255,255,0.06)" } }
+      }
+    }
+  });
+  COMBINED_CHART._fullMin = combinedXMin;
+  COMBINED_CHART._range = prevRange || "ALL";
+  setupChartRange("combinedRange", () => COMBINED_CHART);
+}
+
+// ============================================================
+// COMING UP: the next few gift occasions across every kid,
+// birthdays and Christmases, soonest first. Occasions past a kid's
+// 18th birthday are skipped; gifts stop at the handoff.
+// ============================================================
+function upcomingGifts(count = 5) {
+  const now = today();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const raw = [];
+  for (const k of DATA.kids) {
+    for (const mmdd of k.giftDays) {
+      const [m, d] = mmdd.split("-").map(Number);
+      let dt = new Date(now.getFullYear(), m - 1, d, 12);
+      if (dt < startOfToday) dt = new Date(now.getFullYear() + 1, m - 1, d, 12);
+      if (dt > eighteenthBirthday(k)) continue;
+      // Skip an occasion whose gift was already bought early. An occasion
+      // falling today still shows: today is the day it arrives.
+      if (ymdLocal(dt) !== ymdLocal(startOfToday) && giftGivenOn(k, dt)) continue;
+      const isBday = mmdd === k.birthDate.slice(5);
+      const turning = dt.getFullYear() - parseDate(k.birthDate).getFullYear();
+      raw.push({
+        kid: k,
+        date: dt,
+        days: Math.max(0, daysBetween(startOfToday, dt)),
+        isXmas: !isBday,
+        occasion: isBday ? `Turns ${turning} 🎂` : "Christmas 🎄",
+      });
+    }
+  }
+  // Christmas is a gift day for every eligible kid, so collapse it into a
+  // single shared row instead of one identical row per kid (which used to
+  // crowd out the list and make it look like only one kid gets a gift).
+  const groups = new Map();
+  const items = [];
+  for (const r of raw) {
+    if (r.isXmas) {
+      const key = `xmas-${r.date.getFullYear()}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = { kids: [], date: r.date, days: r.days, occasion: "Christmas 🎄" };
+        groups.set(key, g);
+        items.push(g);
+      }
+      g.kids.push(r.kid);
+    } else {
+      items.push({ kids: [r.kid], date: r.date, days: r.days, occasion: r.occasion });
+    }
+  }
+  items.sort((a, b) => a.date - b.date);
+  return items.slice(0, count);
+}
+
+function renderComingUp() {
+  const wrap = document.getElementById("comingUp");
+  if (!wrap) return;
+  const items = upcomingGifts(5);
+  wrap.innerHTML = "";
+  for (const it of items) {
+    const grouped = it.kids.length > 1;
+    const row = document.createElement("a");
+    row.className = "up-row" + (it.days <= 14 ? " soon" : "");
+    row.href = grouped ? "#/" : `#/name/${it.kids[0].id}`;
+    row.style.textDecoration = "none";
+    const dateStr = it.date.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
+    const daysStr = it.days === 0 ? "Today 🎉" : (it.days === 1 ? "Tomorrow" : `in ${it.days} days`);
+    let emojiHtml, nameHtml, occHtml;
+    if (grouped) {
+      const names = it.kids.map(k => k.name);
+      const nameList = names.length <= 3
+        ? names.join(", ")
+        : `${names.slice(0, 3).join(", ")} +${names.length - 3} more`;
+      emojiHtml = `<span class="up-emoji-stack">${
+        it.kids.slice(0, 4).map(k => `<span class="up-stack-emoji">${k.emoji}</span>`).join("")
+      }</span>`;
+      nameHtml = it.occasion;
+      occHtml = `All ${it.kids.length} kids: ${nameList}`;
+    } else {
+      emojiHtml = `<span class="up-emoji">${it.kids[0].emoji}</span>`;
+      nameHtml = it.kids[0].name;
+      occHtml = it.occasion;
+    }
+    row.innerHTML = `
+      ${emojiHtml}
+      <span>
+        <div class="up-name">${nameHtml}</div>
+        <div class="up-occ">${occHtml}</div>
+      </span>
+      <span class="up-when">
+        <div class="up-date">${dateStr}</div>
+        <div class="up-days">${daysStr}</div>
+      </span>`;
+    wrap.appendChild(row);
+  }
+}
+
+function renderDataQuality() {
+  const wrap = document.getElementById("dqWarn");
+  if (!wrap) return;
+  // Hidden for kids; only visible in admin mode (?admin=1)
+  if (!IS_ADMIN) { wrap.style.display = "none"; return; }
+  const dq = DATA.dataQuality || [];
+  if (!dq.length) { wrap.style.display = "none"; return; }
+  const list = document.getElementById("dqList");
+  list.innerHTML = "";
+  for (const x of dq) {
+    const kid = DATA.kids.find(k => k.id === x.kid);
+    const li = document.createElement("li");
+    li.innerHTML = `<b>${kid?.name || x.kid}:</b> ${x.issue}`;
+    list.appendChild(li);
+  }
+  wrap.style.display = "block";
+}
+
+// ============================================================
+// PROJECTION FAN: where the portfolio could go between today and
+// the 18th birthday, under three annual-return scenarios. Assumes
+// the gifting pattern continues at each kid's own historical pace:
+// the future jump per birthday/Christmas equals the average cost
+// basis of the gifts they've received so far (e.g. Noor ~$200,
+// most others ~$110), through the 18th birthday.
+// ============================================================
+const PROJ_GIFT_FALLBACK_CAD = 100;
+
+// Average gift size (cost basis) this kid has received per occasion:
+// total spent / number of gift occasions. Used as the future jump.
+function avgGiftCad(kid) {
+  const txs = kid.transactions || [];
+  if (!txs.length) return PROJ_GIFT_FALLBACK_CAD;
+  const total = txs.reduce((s, tx) => s + tx.shares * tx.price, 0);
+  return total / txs.length;
+}
+const PROJ_SCENARIOS = [
+  { key: "hi",  label: "Optimistic",  rate: 0.12 },
+  { key: "mid", label: "Middle path", rate: 0.08 },
+  { key: "lo",  label: "Cautious",    rate: 0.04 },
+];
+
+// Every future gift occasion (birthday + Christmas) after `from`,
+// up to and including the 18th birthday itself. A gift already bought early
+// is left out: its shares are in today's value, so counting it again here
+// would add it twice.
+function futureGiftDates(kid, from, until) {
+  const out = [];
+  for (let y = from.getFullYear(); y <= until.getFullYear(); y++) {
+    for (const mmdd of kid.giftDays) {
+      const [m, d] = mmdd.split("-").map(Number);
+      const dt = new Date(y, m - 1, d, 12);
+      if (dt > from && dt <= until && !giftGivenOn(kid, dt)) out.push(dt);
+    }
+  }
+  return out.sort((a, b) => a - b);
+}
+
+// Compound `startValue` from today to the 18th birthday at `rate`,
+// dropping in this kid's average gift on each future gift date.
+// Monthly checkpoints keep the curve smooth without hundreds of points.
+function projectSeries(kid, rate, startValue) {
+  const start = new Date();
+  const end = eighteenthBirthday(kid);
+  if (end <= start) return [];
+  const giftAmt = avgGiftCad(kid);
+  const gifts = futureGiftDates(kid, start, end);
+  const giftSet = new Set(gifts.map(g => +g));
+  const checkpoints = [];
+  const c = new Date(start);
+  c.setMonth(c.getMonth() + 1);
+  while (c < end) { checkpoints.push(new Date(c)); c.setMonth(c.getMonth() + 1); }
+  const all = [...checkpoints, ...gifts, new Date(end)]
+    .sort((a, b) => a - b)
+    .filter((d, i, arr) => i === 0 || +d !== +arr[i - 1]);
+
+  let v = startValue;
+  let prev = start;
+  const pts = [{ x: +start, y: v }];
+  for (const d of all) {
+    const yrs = (d - prev) / (365.25 * 86400000);
+    v *= Math.pow(1 + rate, yrs);
+    if (giftSet.has(+d)) v += giftAmt;
+    pts.push({ x: +d, y: v });
+    prev = d;
+  }
+  return pts;
+}
+
+// Draws "$X · 12%" style labels at each scenario's endpoint, nudged apart
+// vertically so they stay readable when the paths end close together.
+const projEndLabelsPlugin = {
+  id: "projEndLabels",
+  afterDatasetsDraw(chart) {
+    const metaLabels = chart.$projEndLabels;
+    if (!metaLabels || !metaLabels.length) return;
+    const { ctx, chartArea: area } = chart;
+    const rows = [];
+    metaLabels.forEach((lab, di) => {
+      const meta = chart.getDatasetMeta(di);
+      const last = meta.data[meta.data.length - 1];
+      if (!last) return;
+      rows.push({ y: last.y, x: last.x, text: lab.text, color: lab.color });
+    });
+    rows.sort((a, b) => a.y - b.y);
+    const gap = 16;
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i].y < rows[i - 1].y + gap) rows[i].y = rows[i - 1].y + gap;
+    }
+    const overflow = rows.length ? rows[rows.length - 1].y - (area.bottom - 4) : 0;
+    if (overflow > 0) for (const r of rows) r.y -= overflow;
+    ctx.save();
+    ctx.font = "600 11px " + Chart.defaults.font.family;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "right";
+    for (const r of rows) {
+      const x = Math.min(r.x - 6, area.right - 2);
+      ctx.fillStyle = r.color;
+      ctx.fillText(r.text, x, Math.max(area.top + 8, r.y));
+    }
+    ctx.restore();
+  }
+};
+
+let PROJ_CHART = null;
+
+function renderProjection(kid, holdings) {
+  const panel = document.getElementById("projPanel");
+  if (!panel) return;
+  const end = eighteenthBirthday(kid);
+  const now = new Date();
+  if (end <= now || holdings.value <= 0) { panel.style.display = "none"; return; }
+  panel.style.display = "";
+
+  const series = PROJ_SCENARIOS.map(s => ({ ...s, pts: projectSeries(kid, s.rate, holdings.value) }));
+  const endVals = Object.fromEntries(series.map(s => [s.key, s.pts[s.pts.length - 1].y]));
+
+  // Heading shows the 8% middle-path value at the 18th birthday.
+  const projHeading = document.getElementById("projHeading");
+  if (projHeading) projHeading.textContent = `Where this could go: ${CAD0.format(endVals.mid)} for your FHSA on your 18th birthday`;
+
+  const spanYears = (end - now) / (365.25 * 86400000);
+  const timeUnit = spanYears > 3 ? "year" : "month";
+
+  if (PROJ_CHART) PROJ_CHART.destroy();
+  const ctx = document.getElementById("projChart").getContext("2d");
+  PROJ_CHART = new Chart(ctx, {
+    type: "line",
+    plugins: [projEndLabelsPlugin],
+    data: {
+      datasets: [
+        { // optimistic edge of the fan; fills down to the cautious edge
+          label: "Optimistic (12%/yr)",
+          data: series[0].pts,
+          borderColor: "rgba(94,234,212,0.55)", borderWidth: 1.2, borderDash: [4, 4],
+          backgroundColor: kid.color + "26", fill: 2,
+          pointRadius: 0, pointHoverRadius: 3, tension: 0.2,
+        },
+        {
+          label: "Middle path (8%/yr)",
+          data: series[1].pts,
+          borderColor: kid.color, borderWidth: 2.5,
+          fill: false, pointRadius: 0, pointHoverRadius: 4, tension: 0.2,
+        },
+        {
+          label: "Cautious (4%/yr)",
+          data: series[2].pts,
+          borderColor: "rgba(184,184,184,0.55)", borderWidth: 1.2, borderDash: [4, 4],
+          fill: false, pointRadius: 0, pointHoverRadius: 3, tension: 0.2,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      layout: { padding: { right: 8 } },
+      plugins: {
+        legend: { position: "bottom", labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 } } },
+        tooltip: { callbacks: {
+          title: (items) => items[0] ? new Date(items[0].parsed.x).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "",
+          label: (c) => c.dataset.label + ": " + CAD0.format(c.parsed.y)
+        } }
+      },
+      scales: {
+        x: {
+          type: "time",
+          time: { unit: timeUnit },
+          ticks: timeUnit === "month" ? { callback: monthYearTick, maxRotation: 0, autoSkip: true } : { maxRotation: 0, autoSkip: true },
+          grid: { display: false }
+        },
+        // Long horizons read best from $0; short ones (a kid close to 18)
+        // would be a flat line at the top, so zoom to the data instead.
+        y: { beginAtZero: spanYears > 2, ticks: { callback: v => CAD0.format(v) }, grid: { color: "rgba(255,255,255,0.06)" } }
+      }
+    }
+  });
+  PROJ_CHART.$projEndLabels = [
+    { text: CAD0.format(endVals.hi) + " · 12%", color: "#5eead4" },
+    { text: CAD0.format(endVals.mid) + " · 8%", color: kid.color },
+    { text: CAD0.format(endVals.lo) + " · 4%", color: "#b8b8b8" },
+  ];
+  PROJ_CHART.update();
+
+  // The wow line: middle path at 18, then left alone (no new money) until 65.
+  const at65 = endVals.mid * Math.pow(1.08, 65 - 18);
+  document.getElementById("projWow").innerHTML =
+    `Here's the fun part: if you save for your home another way and want this money to help with your retirement instead, an FHSA can roll into an RRSP and keep compounding tax-free (it just has to stay invested, that's what makes it grow). Left untouched until 65, the middle path could grow to <b>${CAD0.format(at65)}</b>. Same money, just more birthdays.`;
+}
+
+// ============================================================
+// HOUSE FUND: portfolio value as a share of a 20% down payment on a
+// benchmark home (CREA national average, manually updated in DATA;
+// a kid-level homeCity overrides it). One bar: the down payment
+// share owned today.
+// ============================================================
+function renderHouseFund(kid, holdings) {
+  const panel = document.getElementById("houseFundPanel");
+  if (!panel) return;
+  const bench = kid.homeCity || DATA.homeBenchmark;
+  if (!bench || !bench.price || holdings.value <= 0) { panel.style.display = "none"; return; }
+  panel.style.display = "";
+
+  const down = bench.price * 0.20;
+  const pctNow = (holdings.value / down) * 100;
+  const fmtPct = (p) => (p >= 10 ? Math.round(p) : p.toFixed(1)) + "%";
+
+  // "Already own X%" only lands once the share is meaningful. Early on it's
+  // a fraction of a percent, so frame it as a growing head start in dollars.
+  const hfCaption = pctNow < 5
+    ? `The whole point of this fund: a first home. This is a head start on a 20% down payment for the ${bench.label}, <b>${CAD0.format(holdings.value)}</b> toward <b>${CAD0.format(down)}</b> so far, and it grows every birthday.`
+    : `The whole point of this fund: a first home. You already own <b>${fmtPct(pctNow)}</b> of a 20% down payment on the ${bench.label}.`;
+  document.getElementById("hfCaption").innerHTML = hfCaption;
+
+  const bar = (label, pct, cls) => `
+    <div class="hf-bar-label"><span>${label}</span><span class="hf-pct">${fmtPct(pct)} of ${CAD0.format(down)}</span></div>
+    <div class="hf-bar"><div class="hf-fill ${cls}" style="width:${Math.min(100, pct)}%"></div></div>`;
+  document.getElementById("hfBars").innerHTML =
+    bar("Down payment today", pctNow, "");
+
+  document.getElementById("hfNote").textContent =
+    `Benchmark: ${bench.label} at ${CAD0.format(bench.price)} (${bench.source || "manual benchmark"}, ${bench.asOf}), so a 20% down payment is ${CAD0.format(down)}. ` +
+    `20% is the threshold that avoids mortgage default insurance in Canada. That number is updated by hand, not fetched live, and house prices move too. Treat this as a snapshot, not a promise.`;
+}
+
+// ============================================================
+// MILESTONE BADGES (Badges shelf)
+// Everything is computed from the transaction history + daily price
+// series. "Seen" state lives in localStorage per kid, so the confetti
+// for a newly earned badge only fires once.
+// ============================================================
+// The FHSA bonus: the only badge that isn't computed from prices. The owner records
+// the date a kid actually opened and funded their FHSA (kid.fhsaOpened in DATA
+// and portfolio_data.json); if it lands inside the window, the badge unlocks.
+const FHSA_BONUS = 100;
+const FHSA_WINDOW_DAYS = 30;
+const FHSA_WINDOW_WORDS = "thirty";  // keep in sync with FHSA_WINDOW_DAYS
+
+const BADGE_DEFS = [
+  { id: "v100",    icon: "💵", name: "First $100",    color: "#4ade80", hint: "Portfolio value reaches $100" },
+  { id: "v500",    icon: "💰", name: "First $500",    color: "#4ade80", hint: "Portfolio value reaches $500" },
+  { id: "v1000",   icon: "🏆", name: "First $1,000",  color: "#f5b840", hint: "Portfolio value reaches $1,000" },
+  { id: "gain100", icon: "🤖", name: "Your money made $100 by itself", color: "#5eead4", hint: "Gains hit $100 with nobody adding a cent" },
+  { id: "double",  icon: "🚀", name: "Doubled a gift", color: "#a78bfa", hint: "One gift grows to twice what it cost" },
+  { id: "y1",      icon: "🌱", name: "1 year invested", color: "#4ade80", hint: "One year since your first gift" },
+  { id: "y3",      icon: "🌿", name: "3 years invested", color: "#4ade80", hint: "Three years in the market" },
+  { id: "y5",      icon: "🌳", name: "5 years invested", color: "#f5b840", hint: "Five years of compounding" },
+  { id: "fhsa",    icon: "🔑", name: "FHSA opened", color: "#f5b840", bonus: true,
+    hint: "Within " + FHSA_WINDOW_WORDS + " days of turning 18",
+    tip: "Open an FHSA account in your name and invest the money I hand off to you within " + FHSA_WINDOW_WORDS + " days of your 18th birthday, and I'll e-transfer you " + CAD0.format(FHSA_BONUS) + " to invest or celebrate with." },
+];
+
+// Returns { id -> "YYYY-MM-DD" } for every badge the kid has earned.
+function computeBadges(kid) {
+  const earned = {};
+  const txs = kid.transactions.slice().sort((a, b) => txDate(a) < txDate(b) ? -1 : 1);
+  if (!txs.length) return earned;
+  const series = dailySeries(kid);
+  const firstOn = (pred) => { for (const s of series) if (pred(s)) return s.date; return null; };
+
+  const v100 = firstOn(s => s.value >= 100);      if (v100) earned.v100 = v100;
+  const v500 = firstOn(s => s.value >= 500);      if (v500) earned.v500 = v500;
+  const v1000 = firstOn(s => s.value >= 1000);    if (v1000) earned.v1000 = v1000;
+  const g100 = firstOn(s => s.value - s.cost >= 100); if (g100) earned.gain100 = g100;
+
+  // Doubled a gift: the first day any single lot is worth 2x its cost.
+  outer:
+  for (const s of series) {
+    for (const tx of txs) {
+      if (txDate(tx) <= s.date && priceOn(tx.ticker, s.date) >= 2 * tx.price) {
+        earned.double = s.date;
+        break outer;
+      }
+    }
+  }
+
+  // Years invested, measured from the first gift.
+  const first = parseDate(txs[0].date);
+  const now = today();
+  for (const [id, yrs] of [["y1", 1], ["y3", 3], ["y5", 5]]) {
+    const anniv = new Date(first.getFullYear() + yrs, first.getMonth(), first.getDate(), 12);
+    if (anniv <= now) earned[id] = anniv.toISOString().slice(0, 10);
+  }
+
+  // FHSA bonus: hand-recorded, not computed. Counts only if the account was
+  // opened on or within FHSA_WINDOW_DAYS of the 18th birthday.
+  if (kid.fhsaOpened) {
+    const gap = daysBetween(eighteenthBirthday(kid), parseDate(kid.fhsaOpened));
+    if (gap >= 0 && gap <= FHSA_WINDOW_DAYS) earned.fhsa = kid.fhsaOpened;
+  }
+
+  return earned;
+}
+
+function badgeSeenKey(kidId) { return "fhsaBadges:" + kidId; }
+
+function loadSeenBadges(kidId) {
+  try { return new Set(JSON.parse(localStorage.getItem(badgeSeenKey(kidId)) || "[]")); }
+  catch (_) { return new Set(); }
+}
+
+function saveSeenBadges(kidId, ids) {
+  try { localStorage.setItem(badgeSeenKey(kidId), JSON.stringify([...ids])); }
+  catch (_) { /* private mode etc.; confetti may repeat, no harm */ }
+}
+
+// Render the shelf. Returns true if a newly earned badge appeared (so the
+// caller can fire confetti once).
+function renderBadges(kid) {
+  const shelf = document.getElementById("badgeShelf");
+  if (!shelf) return false;
+  const earned = computeBadges(kid);
+  const seen = loadSeenBadges(kid.id);
+  const newIds = Object.keys(earned).filter(id => !seen.has(id));
+
+  shelf.innerHTML = "";
+  let count = 0;
+  for (const def of BADGE_DEFS) {
+    const date = earned[def.id];
+    const tile = document.createElement("div");
+    const bonusLine = def.bonus
+      ? `<div class="b-bonus">${date ? "+" + CAD0.format(FHSA_BONUS) + " earned" : "+" + CAD0.format(FHSA_BONUS) + " if you do"}</div>`
+      : "";
+    if (def.tip) {
+      tile.setAttribute("data-tip", def.tip);
+      tile.setAttribute("tabindex", "0");
+    }
+    if (date) {
+      count++;
+      const nice = new Date(date + "T12:00").toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
+      tile.className = "badge-tile earned" + (def.bonus ? " bonus" : "");
+      tile.style.setProperty("--badge-c", def.color);
+      tile.innerHTML = `
+        ${newIds.includes(def.id) ? '<span class="b-new">New</span>' : ""}
+        <div class="b-icon">${def.icon}</div>
+        <div class="b-name">${def.name}</div>
+        <div class="b-date">Earned ${nice}</div>
+        ${bonusLine}`;
+    } else {
+      tile.className = "badge-tile locked" + (def.bonus ? " bonus" : "");
+      tile.innerHTML = `
+        <div class="b-icon">${def.icon}</div>
+        <div class="b-name">${def.name}</div>
+        <div class="b-hint">${def.hint}</div>
+        ${bonusLine}`;
+    }
+    shelf.appendChild(tile);
+  }
+  const countEl = document.getElementById("badgeCount");
+  if (countEl) countEl.textContent = `${count} of ${BADGE_DEFS.length} earned`;
+
+  if (newIds.length) {
+    for (const id of newIds) seen.add(id);
+    saveSeenBadges(kid.id, seen);
+    return true;
+  }
+  return false;
+}
+
+// Mini row of earned-only badges shown next to the kid's name in the hero.
+// Each is an emoji chip; hover or tap reveals what it means.
+function renderNameBadges(kid) {
+  const row = document.getElementById("kidNameBadges");
+  if (!row) return;
+  const earned = computeBadges(kid);
+  row.innerHTML = "";
+  const earnedCount = BADGE_DEFS.filter(d => earned[d.id]).length;
+  if (!earnedCount) return;
+
+  const scrollToShelf = () => {
+    const shelf = document.getElementById("badgeShelf");
+    if (shelf) shelf.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const label = document.createElement("span");
+  label.className = "nb-label";
+  label.textContent = "🏅 Badges earned";
+  row.appendChild(label);
+
+  for (const def of BADGE_DEFS) {
+    if (!earned[def.id]) continue;
+    const chip = document.createElement("span");
+    chip.className = "name-badge";
+    chip.style.setProperty("--badge-c", def.color);
+    chip.setAttribute("tabindex", "0");
+    chip.setAttribute("role", "button");
+    chip.setAttribute("data-tip", def.name);
+    chip.setAttribute("aria-label", def.name + " badge; see all badges");
+    chip.textContent = def.icon;
+    chip.addEventListener("click", scrollToShelf);
+    chip.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); scrollToShelf(); } });
+    row.appendChild(chip);
+  }
+
+  const count = document.createElement("a");
+  count.className = "nb-count";
+  count.textContent = `${earnedCount} of ${BADGE_DEFS.length}`;
+  count.setAttribute("tabindex", "0");
+  count.setAttribute("role", "button");
+  count.setAttribute("aria-label", "See all badges");
+  count.addEventListener("click", scrollToShelf);
+  count.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); scrollToShelf(); } });
+  row.appendChild(count);
+}
+
+// ============================================================
+// KID VIEW
+// ============================================================
+let KID_CHART = null;
+let DONUT_CHART = null;
+
+function renderKid(kidId) {
+  const k = DATA.kids.find(x => x.id === kidId);
+  if (!k) { location.hash = "#/"; return; }
+  const h = holdingsFor(k, LIVE_PRICES);
+  const age = ageInYears(k.birthDate);
+  const next = nextGiftDate(k);
+  const eighteen = eighteenthBirthday(k);
+  const daysToNext = next ? Math.max(0, daysBetween(today(), next)) : null;
+  const daysTo18 = Math.max(0, daysBetween(today(), eighteen));
+
+  // Hero
+  document.body.style.setProperty("--kid-color", k.color);
+  document.body.style.setProperty("--kid-color-2", k.color2);
+  document.getElementById("kidHero").style.setProperty("--kid-color", k.color);
+  document.getElementById("kidHero").style.setProperty("--kid-color-2", k.color2);
+  document.getElementById("bcName").textContent = " / " + k.name;
+  document.getElementById("kidName").textContent = `Hey, ${k.name}.`;
+  document.getElementById("kidEmoji").textContent = k.emoji;
+  const ageText = age === 0 ? "less than 1 year old" : `${age} years old`;
+  // Time until 18th birthday: full years if >= 2 years away, otherwise "X year(s) Y month(s)"
+  const _now = new Date();
+  let _yrs = eighteen.getFullYear() - _now.getFullYear();
+  let _mos = eighteen.getMonth() - _now.getMonth();
+  if (eighteen.getDate() < _now.getDate()) _mos--;
+  if (_mos < 0) { _yrs--; _mos += 12; }
+  let untilText;
+  if (_yrs >= 2) {
+    untilText = `${_yrs} years`;
+  } else if (_yrs <= 0 && _mos <= 0) {
+    untilText = "0 months";
+  } else {
+    const parts = [];
+    if (_yrs > 0) parts.push(_yrs === 1 ? "1 year" : `${_yrs} years`);
+    if (_mos > 0) parts.push(_mos === 1 ? "1 month" : `${_mos} months`);
+    untilText = parts.join(" ");
+  }
+  document.getElementById("kidSub").textContent =
+    `${ageText} · ${untilText} until your 18th birthday`;
+  if (next) {
+    const nextLabel = next.toLocaleString("en-CA", { month:"long", day:"numeric", year:"numeric" });
+    document.getElementById("kidCounter").innerHTML =
+      `🎁 Your next gift comes in <b>${daysToNext}</b> days · <span style="opacity:.8">${nextLabel}</span>`;
+  } else {
+    // Every gift is bought: either the handoff has passed or the last one is
+    // already in the account.
+    document.getElementById("kidCounter").innerHTML =
+      `🎁 <b>All your gifts have arrived</b> · <span style="opacity:.8">the last one is already in here</span>`;
+  }
+
+  // Live countdown to the handoff (their 18th birthday).
+  CURRENT_KID = k;
+  document.getElementById("kidCounter18").innerHTML = daysTo18 > 0
+    ? `⏳ Handoff day (your 18th) in <b><span id="kidHandoffCountdown">${countdownText(eighteen)}</span></b>`
+    : `🎉 You're 18. This portfolio is yours! Open an FHSA within ${FHSA_WINDOW_WORDS} days and I'll e-transfer you ${CAD0.format(FHSA_BONUS)}.`;
+
+  // Stats (big dollar numbers count up from 0 on render)
+  countUp(document.getElementById("sValue"), h.value);
+  document.getElementById("sValueSub").textContent = "Today, in CAD";
+  countUp(document.getElementById("sCost"), h.cost);
+  countUp(document.getElementById("sGain"), h.gain, (v) => (h.gain >= 0 ? "+" : "") + CAD.format(v));
+  document.getElementById("sGain").style.color = h.gain >= 0 ? "var(--green)" : "var(--red)";
+  document.getElementById("sGainSub").textContent = h.gain >= 0 ? "Money you’ve made just by holding" : "Down a little, totally normal";
+
+  // Yearly growth (XIRR): accounts for when each gift arrived
+  const xirrRate = xirrForKid(k, LIVE_PRICES);
+  const xirrEl = document.getElementById("sXirr");
+  const xirrSubEl = document.getElementById("sXirrSub");
+  if (xirrRate == null || !isFinite(xirrRate)) {
+    xirrEl.textContent = "–";
+    xirrEl.style.color = "var(--ink)";
+    xirrSubEl.textContent = "Need a bit more time to calculate";
+  } else {
+    xirrEl.textContent = PCT(xirrRate);
+    xirrEl.style.color = xirrRate >= 0 ? "var(--green)" : "var(--red)";
+    xirrSubEl.textContent = xirrCaption(xirrRate);
+  }
+
+  // Donut + holdings
+  // Bar colors tuned for the dark theme: brighter, higher-contrast variants
+  // of the brand palette. The soft/ink pairs stay light-on-dark for the pills.
+  const HOLDING_PALETTE = ["#5eead4", "#f5b840", "#a78bfa", "#f472b6"];
+  const HOLDING_PALETTE_SOFT = ["#CCFBF1", "#FEF3C7", "#EDE9FE", "#FCE7F3"];
+  const HOLDING_PALETTE_INK = ["#0F766E", "#92400E", "#5B21B6", "#9D174D"];
+  // Map each ticker to a consistent color slot so the bar, the holdings tile,
+  // and the timeline pills all match for any given ticker.
+  const TICKER_COLORS = {};
+  h.rows.forEach((r, idx) => {
+    const slot = idx % HOLDING_PALETTE.length;
+    TICKER_COLORS[r.ticker] = {
+      base: HOLDING_PALETTE[slot],
+      soft: HOLDING_PALETTE_SOFT[slot],
+      ink: HOLDING_PALETTE_INK[slot],
+    };
+  });
+  if (DONUT_CHART) DONUT_CHART.destroy();
+  const dctx = document.getElementById("donutChart").getContext("2d");
+  // hex -> rgba with alpha, for the see-through earnings segment
+  const withAlpha = (hex, a) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n>>16)&255}, ${(n>>8)&255}, ${n&255}, ${a})`;
+  };
+  const palette = HOLDING_PALETTE.slice(0, h.rows.length);
+  // solid = cost basis (capped at current value for losses), see-through tip = earnings
+  const basisData = h.rows.map(r => Math.min(r.cost, r.value));
+  const earnData  = h.rows.map(r => Math.max(r.gain, 0));
+  DONUT_CHART = new Chart(dctx, {
+    type: "bar",
+    data: {
+      labels: h.rows.map(r => DATA.tickers[r.ticker].short),
+      datasets: [
+        {
+          label: "Cost basis",
+          data: basisData,
+          backgroundColor: palette,
+          borderWidth: 0,
+          borderRadius: 0,
+          barThickness: 40,
+          categoryPercentage: 0.8,
+          barPercentage: 1.0,
+        },
+        {
+          label: "Earnings",
+          data: earnData,
+          backgroundColor: palette.map(c => withAlpha(c, 0.4)),
+          borderWidth: 0,
+          borderRadius: { topRight: 6, bottomRight: 6 },
+          borderSkipped: false,
+          barThickness: 40,
+          categoryPercentage: 0.8,
+          barPercentage: 1.0,
+        }
+      ]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 12 } },
+      scales: {
+        x: {
+          stacked: true,
+          beginAtZero: true,
+          grid: { color: "rgba(255,255,255,0.06)", drawBorder: false },
+          ticks: {
+            callback: (v) => CAD0.format(v),
+            color: "#b8b8b8",
+            font: { size: 11 },
+            maxTicksLimit: 5,
+            maxRotation: 0,
+            minRotation: 0,
+            autoSkipPadding: 16,
+          }
+        },
+        y: {
+          stacked: true,
+          grid: { display: false, drawBorder: false },
+          ticks: { color: "#ffffff", font: { size: 13 } }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items)=> items[0]?.label || "",
+            label: (ctx)=> {
+              const r = h.rows[ctx.dataIndex];
+              if (ctx.datasetIndex === 0) return `Cost basis: ${CAD.format(r.cost)}`;
+              return `Earnings: ${r.gain>=0?'+':''}${CAD.format(r.gain)} (${PCT(r.gainPct)})`;
+            },
+            footer: (items)=> {
+              const r = h.rows[items[0].dataIndex];
+              return `Value: ${CAD.format(r.value)}`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  const hl = document.getElementById("holdingsList");
+  hl.innerHTML = "";
+  h.rows.forEach((r) => {
+    const c = TICKER_COLORS[r.ticker];
+    const div = document.createElement("div");
+    div.className = "holding";
+    div.style.borderLeft = `4px solid ${c.base}`;
+    div.innerHTML = `
+      <div><span class="ticker-pill" style="background:${c.soft};color:${c.ink};border-color:${c.ink}">${r.ticker.replace(".TO","")}</span></div>
+      <div>
+        <div class="tk">${DATA.tickers[r.ticker].short}</div>
+        <div class="nm">${r.shares} shares @ ${CAD.format(r.price)}</div>
+      </div>
+      <div class="v"><div class="big">${CAD.format(r.value)}</div><div class="small ${r.gain>=0?'':''}">${r.gain>=0?'+':''}${CAD.format(r.gain)} (${PCT(r.gainPct)})</div></div>
+    `;
+    hl.appendChild(div);
+  });
+
+  // Timeline
+  const tl = document.getElementById("timeline");
+  tl.innerHTML = "";
+  k.transactions.slice().sort((a,b)=>a.date<b.date?-1:1).forEach((tx, i) => {
+    const px = LIVE_PRICES?.[tx.ticker]?.price ?? DATA.tickers[tx.ticker].priceFallback;
+    const curValue = tx.shares * px;
+    const txCost = tx.shares * tx.price;
+    const txGain = curValue - txCost;
+    const txGainPct = txGain / txCost;
+    const eventLabel = /christmas/i.test(tx.event)
+      ? `${tx.event} ${tx.date.slice(0,4)}`
+      : tx.event;
+    const tc = TICKER_COLORS[tx.ticker] || {};
+    const div = document.createElement("div");
+    div.className = "tx";
+    if (tc.base) div.style.setProperty("--dot-color", tc.base);
+    div.innerHTML = `
+      <div class="tx-row">
+        <div>
+          <div class="tx-event">${i + 1}. ${eventLabel} <span class="ticker-pill" style="margin-left:6px;background:${tc.soft||'var(--gold-soft)'};color:${tc.ink||'#92400E'};border-color:${tc.ink||'#92400E'}">${tx.ticker.replace(".TO","")}</span></div>
+          <div class="tx-date">${new Date(tx.date+"T12:00").toLocaleDateString("en-CA", { dateStyle:"long" })}</div>
+          <div class="tx-detail">${tx.shares} share${tx.shares===1?"":"s"} @ ${CAD.format(tx.price)} = ${CAD.format(txCost)}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="tx-amount">${CAD.format(curValue)}</div>
+          <div class="delta ${txGain>=0?'up':'down'}" style="margin-top:4px">${txGain>=0?'▲':'▼'} ${PCT(txGainPct)}</div>
+        </div>
+      </div>
+    `;
+    tl.appendChild(div);
+  });
+
+  // Value-over-time chart: daily resolution from baked-in price history.
+  // Cost basis is a true step chart (flat between gifts, vertical jump on the gift day).
+  if (KID_CHART) KID_CHART.destroy();
+  const cctx = document.getElementById("kidChart").getContext("2d");
+  const series = giftJumpSeries(k, dailySeries(k));
+  KID_CHART = new Chart(cctx, {
+    type: "line",
+    plugins: [giftMarkersPlugin],
+    data: {
+      datasets: [
+        {
+          label: "Portfolio value",
+          data: series.map(s => ({ x: s.date, y: s.value })),
+          borderColor: k.color, backgroundColor: k.color + "22",
+          // tension 0: with two points sharing a gift-day x, linear interpolation
+          // gives a crisp vertical jump (cubic smoothing would bow or glitch).
+          fill: true, tension: 0, pointRadius: 0, pointHoverRadius: 5,
+          borderWidth: 2,
+        },
+        {
+          label: "Cost basis",
+          data: series.map(s => ({ x: s.date, y: s.cost })),
+          borderColor: "#6b6b6b", borderDash: [4, 4],
+          fill: false, stepped: true, pointRadius: 0, pointHoverRadius: 4,
+          borderWidth: 1.5,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      onHover: giftMarkersOnHover,
+      plugins: {
+        legend: { position: "bottom", labels: { boxWidth: 10, boxHeight: 10 } },
+        tooltip: { callbacks: {
+          title: (items) => items[0] ? new Date(items[0].parsed.x).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "",
+          label: (ctx)=> ctx.dataset.label + ": " + CAD.format(ctx.parsed.y)
+        } }
+      },
+      scales: {
+        x: {
+          type: "time",
+          time: { unit: "month" },
+          min: series.length ? series[0].date.slice(0, 7) + "-01" : undefined,
+          ticks: { callback: monthYearTick, maxRotation: 0, autoSkip: true },
+          grid: { display: false }
+        },
+        y: { beginAtZero: true, ticks: { callback: v => CAD0.format(v) }, grid: { color: "rgba(255,255,255,0.06)" } }
+      }
+    }
+  });
+  KID_CHART._fullMin = series.length ? series[0].date.slice(0, 7) + "-01" : undefined;
+  KID_CHART._range = "ALL";
+  KID_CHART.$gifts = giftMarkersFor(k);
+  KID_CHART.$giftHover = null;
+  setupChartRange("kidRange", () => KID_CHART);
+
+  // Projection fan: where this could go by their 18th birthday.
+  renderProjection(k, h);
+
+  // House fund: progress toward a 20% down payment.
+  renderHouseFund(k, h);
+
+  // Badges shelf; true if a badge was newly earned since the last visit.
+  const newBadge = renderBadges(k);
+  renderNameBadges(k);
+
+  // Confetti when the page is opened on their birthday or a gift day, or
+  // when a milestone badge was just earned. One burst, not two.
+  const t0 = today();
+  const mmddToday = String(t0.getMonth() + 1).padStart(2, "0") + "-" + String(t0.getDate()).padStart(2, "0");
+  if (k.giftDays.includes(mmddToday) || newBadge) fireConfetti([k.color, "#f5b840", "#5eead4", "#ffffff"]);
+
+  // ETF list
+  const etfWrap = document.getElementById("etfList");
+  etfWrap.innerHTML = "";
+  const seenTickers = [...new Set(k.transactions.map(t => t.ticker))];
+  seenTickers.forEach(t => {
+    const ti = DATA.tickers[t];
+    const px = LIVE_PRICES?.[t]?.price ?? ti.priceFallback;
+    const div = document.createElement("div");
+    div.style.padding = "10px 0";
+    div.style.borderBottom = "1px solid var(--line)";
+    div.innerHTML = `
+      <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap">
+        <span class="ticker-pill"${TICKER_COLORS[t] ? ` style="background:${TICKER_COLORS[t].soft};color:${TICKER_COLORS[t].ink};border-color:${TICKER_COLORS[t].ink}"` : ""}>${t.replace(".TO","")}</span>
+        <div style="font-weight:700">${ti.name}</div>
+        <div style="color:var(--muted); font-size:13px">${CAD.format(px)} / share</div>
+      </div>
+      <div style="color:var(--ink-soft); font-size:14px; margin-top:6px">${ti.explain}</div>
+    `;
+    etfWrap.appendChild(div);
+  });
+  // Remove last border
+  if (etfWrap.lastChild) etfWrap.lastChild.style.borderBottom = "none";
+
+  // Birthday email preview: admin-only. Hidden from kids in share mode.
+  const birthdayBox = document.getElementById("birthdayBox");
+  if (IS_ADMIN) {
+    birthdayBox.hidden = false;
+    document.getElementById("emailPreview").textContent = buildBirthdayEmail(k, h, age);
+  } else {
+    birthdayBox.hidden = true;
+  }
+}
+
+// ============================================================
+// LESSONS: age-banded teaching content
+// ============================================================
+const LESSONS = {
+  dca: {
+    "0-4": {
+      tag: "Dollar-cost averaging",
+      title: "Tiny seeds, planted regularly 🌱",
+      body: `<p>Every birthday and every Christmas, I plant a tiny seed for you. Some years the seeds are cheap, some years they're a bit pricey, but I plant them anyway.</p>
+             <p>By the time you're old enough to read this on your own, you'll already have a whole little garden growing.</p>`
+    },
+    "5-8": {
+      tag: "Dollar-cost averaging",
+      title: "Buying a little, every time 🛒",
+      body: `<p>Imagine if every birthday you saved up to buy <i>one</i> jellybean. Some years jellybeans cost a quarter, some years they cost a dollar. You'd end up with a mix, and on average it works out OK.</p>
+             <p>That's what's happening here. I buy some pieces of those 500 American companies every time, no matter what the price is. That's called <b>dollar-cost averaging</b>.</p>`
+    },
+    "9-12": {
+      tag: "Dollar-cost averaging",
+      title: "The 'price doesn't matter much' trick 🎯",
+      body: `<p>Trying to guess when prices are low and high is called <i>market timing</i>. Even the pros are bad at it.</p>
+             <p>Dollar-cost averaging is the opposite: you buy at fixed times (like birthdays and Christmas) and stop worrying about whether today's price is "right." Over many years, the highs and lows average out.</p>
+             <p>Look at your gift list above: some of your shares were bought cheaper, some were bought more expensive. That mix is the magic.</p>`
+    },
+    "13-17": {
+      tag: "Dollar-cost averaging",
+      title: "Why timing the market is a trap 🪤",
+      body: `<p>If you wait for prices to drop, you might be waiting forever. If you wait for them to rise, you missed the rise. Most investors who try to time it underperform the people who just buy regularly and ignore the noise.</p>
+             <p>Your gift list is a real example of DCA. Notice how the purchase prices bounce around: some weeks ETFs are up, some weeks they're down. You don't care, because you bought in either way.</p>
+             <p>When you start your FHSA at 18 and start adding your own money: keep doing this. Pick a number you can put in every month and just keep going.</p>`
+    }
+  },
+  compound: {
+    "0-4": {
+      tag: "Compound interest",
+      title: "A snowball that grows itself ❄️",
+      body: `<p>If you roll a tiny snowball through snow, it gets bigger. The bigger it gets, the more snow it picks up, so it gets even bigger. That's how your money grows.</p>`
+    },
+    "5-8": {
+      tag: "Compound interest",
+      title: "Money that makes more money 🪙",
+      body: `<p>Imagine a money tree. Every year, the tree grows a little, and the new bit of tree <i>also</i> grows a little next year. After many years, even a small tree can become a big one.</p>
+             <p>Right now you have ${"<b>"+ /*placeholder*/0+"</b>"} dollars. If it grows about 8% every year, in 10 years it would roughly double. That's not a promise, but it's about what the S&amp;P 500 has done historically.</p>`
+    },
+    "9-12": {
+      tag: "Compound interest",
+      title: "The most magical math you'll ever learn 🪄",
+      body: `<p>Here's a wild fact: if you invested $100 today and it earned 8% a year, it would be worth <b>~$216</b> in 10 years, <b>~$466</b> in 20 years, and <b>~$1,006</b> in 30 years. That's the same $100, just left alone.</p>
+             <p>That curve gets steeper the longer you wait. The trick isn't being clever. It's being <i>early</i> and <i>patient</i>.</p>
+             <p>By the time you're 30, the money in your account today could have multiplied many times over, without anyone adding a single new dollar.</p>`
+    },
+    "13-17": {
+      tag: "Compound interest",
+      title: "Why starting now matters way more than starting big 🚀",
+      body: `<p>Two friends: Avery starts investing $100/month at age 18 and stops at 28. Jordan starts at 28 and goes until 65. Both earned 8%/year. Avery <i>still</i> ends up with more money, even though they invested for fewer years.</p>
+             <p>The reason: Avery's money had a head start. It got 10 extra years of growing on top of growing on top of growing.</p>
+             <p>You're already further ahead than Avery was. Every gift in your account is an early-Avery dollar.</p>`
+    }
+  },
+  diversification: {
+    "0-4": {
+      tag: "Diversification",
+      title: "All the eggs, all the baskets 🥚",
+      body: `<p>Instead of one toy, what if you had a little bit of 500 different toys? Even if one breaks, you still have 499. That's what you own.</p>`
+    },
+    "5-8": {
+      tag: "Diversification",
+      title: "You own a slice of 500 companies 🍰",
+      body: `<p>Some of the names in there: Apple, Google, Microsoft, McDonald's, Disney. You own a little tiny piece of all of them, and 495 more.</p>
+             <p>If one company has a bad year, the others might have a great one. You don't have to pick a winner because you own all the winners.</p>`
+    },
+    "9-12": {
+      tag: "Diversification",
+      title: "Don't put all your eggs in one basket 🧺",
+      body: `<p>If you put all your money into one company and that company has a rough year, you lose a lot. If you put it across 500 companies, even if a few struggle, the others usually carry you.</p>
+             <p>That's what an ETF does in one share. It's a basket of 500 baskets, all for the price of one.</p>`
+    },
+    "13-17": {
+      tag: "Diversification",
+      title: "Index funds: the boring shortcut 🤓",
+      body: `<p>You could try to pick stocks. But picking the right ones consistently is genuinely hard &mdash; even people who do it full-time spend years studying companies, modeling cash flows, and reading filings to make their calls.</p>
+             <p>Index investing is the boring shortcut: instead of betting on which company will win, you own a slice of all of them. By holding XUS/VFV/VSP, you're holding the whole market, so your portfolio wins when the American economy grows over time.</p>
+             <p>When you start your own FHSA, you can do the same: buy a few broad ETFs, ignore the chatter, and let time do the heavy lifting.</p>`
+    }
+  }
+};
+
+function lessonBand(age) {
+  if (age <= 4) return "0-4";
+  if (age <= 8) return "5-8";
+  if (age <= 12) return "9-12";
+  return "13-17";
+}
+
+function pickLesson(kid, holdings, age) {
+  // Rotate concept by day-of-year so it changes when they revisit
+  const concepts = ["dca", "compound", "diversification"];
+  const today = new Date();
+  const dayOfYear = Math.floor((today - new Date(today.getFullYear(),0,0)) / 86400000);
+  const concept = concepts[dayOfYear % 3];
+  const band = lessonBand(age);
+  let lesson = LESSONS[concept][band];
+  // Personalize compound lesson 5-8 with their actual value
+  let body = lesson.body;
+  if (concept === "compound" && band === "5-8") {
+    body = body.replace("<b>0</b>", "<b>" + Math.round(holdings.value) + "</b>");
+  }
+  return { tag: lesson.tag, title: lesson.title, body };
+}
+
+// ============================================================
+// BIRTHDAY EMAIL TEXT
+// ============================================================
+function buildBirthdayEmail(kid, holdings, age) {
+  // Find the most recent transaction that matches today's date in any year; fall back to most recent overall
+  const t = today();
+  const mmdd = String(t.getMonth()+1).padStart(2,"0") + "-" + String(t.getDate()).padStart(2,"0");
+  let recent = kid.transactions.filter(tx => tx.date.slice(5) === mmdd).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  if (!recent) recent = kid.transactions.slice().sort((a,b)=>b.date.localeCompare(a.date))[0];
+  const ti = DATA.tickers[recent.ticker];
+
+  const band = lessonBand(age);
+  const concept = ["dca","compound","diversification"][t.getDate() % 3];
+  const lesson = LESSONS[concept][band];
+  // Strip HTML for plain-text email
+  const plain = lesson.body.replace(/<[^>]+>/g, "");
+
+  const eighteen = eighteenthBirthday(kid);
+  const yearsTo18 = Math.max(0, eighteen.getFullYear() - t.getFullYear());
+
+  return `Subject: Happy ${age + (kid.giftDays[0] === mmdd ? "" : " (Christmas edition!)") }: your FHSA Fun(ds) update 🎉
+
+Hey ${kid.name},
+
+Happy ${kid.giftDays[0] === mmdd ? `${age}th birthday` : "Christmas"}! Here's your gift this year and where things stand:
+
+Today's gift: ${recent.shares} share${recent.shares===1?"":"s"} of ${ti.short} (${recent.ticker})
+Purchase price: ${CAD.format(recent.price)} per share
+Total spent today: ${CAD.format(recent.shares * recent.price)}
+
+Your whole portfolio is now worth: ${CAD.format(holdings.value)}
+Total invested over time: ${CAD.format(holdings.cost)}
+Total gain: ${holdings.gain >= 0 ? "+" : ""}${CAD.format(holdings.gain)} (${PCT(holdings.gainPct)})
+
+${yearsTo18 > 0 ? `In ${yearsTo18} year${yearsTo18===1?"":"s"}, when you turn 18, this is all yours to put into an FHSA.` : "This is the year you turn 18. Time to open that FHSA!"}
+${yearsTo18 <= 1 ? `And the standing offer: open an FHSA account in your name and invest the money I hand off to you within ${FHSA_WINDOW_WORDS} days of your 18th birthday, and I'll e-transfer you ${CAD0.format(FHSA_BONUS)} to invest or celebrate with.
+` : ""}
+A little something to think about (${lesson.tag}):
+${lesson.title}
+${plain.trim()}
+
+Love,
+${nameFor(kid)}
+`;
+}
+
+// ============================================================
+// ROUTING
+// ============================================================
+function navHome(e) { if (e) e.preventDefault(); location.hash = "#/"; }
+
+function route() {
+  const h = location.hash || "#/";
+  if (h.startsWith("#/name/")) {
+    const id = h.replace("#/name/", "");
+    document.body.classList.remove("route-home", "route-why");
+    document.body.classList.add("route-kid");
+    renderKid(id);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  } else if (h.startsWith("#/why")) {
+    document.body.classList.remove("route-home", "route-kid");
+    document.body.classList.add("route-why");
+    window.scrollTo({ top: 0, behavior: "instant" });
+  } else {
+    document.body.classList.remove("route-kid", "route-why");
+    document.body.classList.add("route-home");
+    renderHomeStats();
+    renderLeaderboard();
+    renderCombinedChart();
+    renderComingUp();
+    renderDataQuality();
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.getElementById("sortSelect").addEventListener("change", (e) => {
+  SORT_KEY = e.target.value;
+  renderLeaderboard();
+});
+document.getElementById("groupSelect").addEventListener("change", (e) => {
+  GROUP_FILTER = e.target.value;
+  e.target.dataset.value = e.target.value;
+  renderLeaderboard();
+  renderCombinedChart();
+});
+window.addEventListener("hashchange", route);
+
+// Mode flags: admin mode (?admin=1) shows email drafts + data quality notes; default is kid-friendly.
+const IS_ADMIN = new URLSearchParams(location.search).get("admin") === "1";
+if (IS_ADMIN) {
+  // Subtle visual indicator that the owner is in admin view
+  const badge = document.createElement("span");
+  badge.textContent = "ADMIN";
+  badge.style.cssText = "background:#14213D;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.06em;margin-left:8px;";
+  const brandSub = document.querySelector(".brand-sub");
+  if (brandSub) brandSub.appendChild(badge);
+}
+
+// Initial load: try live prices, then render
+(async function init() {
+  await Promise.all([loadPriceHistory(), fetchLivePrices()]);
+  route();
+})();
+
+// PWA: register the service worker (relative path keeps the scope correct
+// under the GitHub Pages subpath). Failure is fine; the site works without it.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
